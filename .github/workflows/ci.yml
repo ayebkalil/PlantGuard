@@ -51,10 +51,19 @@ jobs:
           docker compose build
       - name: Verify container health and frontend proxy
         run: |
-          docker compose up -d --no-build backend frontend
+          docker compose up -d --no-build
           curl --retry 20 --retry-all-errors --retry-delay 2 --fail http://localhost:3000/api/health
           curl --fail http://localhost:3000/ | grep -q PlantGuard
           curl --fail http://localhost:3000/api/metrics/prometheus | grep -q plantguard_model_ready
+          docker compose exec -T prometheus promtool check config /etc/prometheus/prometheus.yml
+          for attempt in {1..20}; do
+            if curl -fsSG http://localhost:9090/api/v1/query --data-urlencode 'query=up{job="plantguard"} == 1' | grep -q '"job":"plantguard"'; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Prometheus did not scrape the backend successfully."
+          exit 1
       - uses: actions/upload-artifact@v6
         if: always()
         with:

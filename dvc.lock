@@ -1,0 +1,164 @@
+schema: '2.0'
+stages:
+  prepare_data:
+    cmd: python -m ml.pipeline prepare
+    deps:
+    - path: data/raw/plantvillage
+      hash: md5
+      md5: f16ba01595f5f83ffa80a74a172c17fd.dir
+      size: 6282093
+      nfiles: 397
+    - path: ml/data/dataset_registry.py
+      hash: md5
+      md5: 46bb2036397903bb157cb8c446a4a07d
+      size: 1849
+    - path: ml/pipeline.py
+      hash: md5
+      md5: 256ceaf89b580dfc357ee844c15085a5
+      size: 1683
+    - path: ml/preprocessing/preprocess.py
+      hash: md5
+      md5: dc833232ce5f968e3aba8df2d20ce313
+      size: 6403
+    - path: uv.lock
+      hash: md5
+      md5: 4405f8c3326e3511f8ebaea029c81de9
+      size: 201952
+    params:
+      params.yaml:
+        dataset:
+          root: data/raw/plantvillage
+          image_size: 128
+          split_seed: 42
+          val_fraction: 0.2
+          test_fraction: 0.2
+    outs:
+    - path: data/processed
+      hash: md5
+      md5: c68a8cbdd3b507aafcab169a9165c633.dir
+      size: 91424
+      nfiles: 3
+  train:
+    cmd: python -m ml.pipeline train
+    deps:
+    - path: data/processed
+      hash: md5
+      md5: c68a8cbdd3b507aafcab169a9165c633.dir
+      size: 91424
+      nfiles: 3
+    - path: data/raw/plantvillage
+      hash: md5
+      md5: f16ba01595f5f83ffa80a74a172c17fd.dir
+      size: 6282093
+      nfiles: 397
+    - path: ml/model.py
+      hash: md5
+      md5: 6d19b0527062a8b486ec1ac9c5273854
+      size: 4438
+    - path: ml/pipeline.py
+      hash: md5
+      md5: 256ceaf89b580dfc357ee844c15085a5
+      size: 1683
+    - path: ml/preprocessing/preprocess.py
+      hash: md5
+      md5: dc833232ce5f968e3aba8df2d20ce313
+      size: 6403
+    - path: ml/registry.py
+      hash: md5
+      md5: eb9bb3f9a175e5e082215d9713e47289
+      size: 3936
+    - path: ml/training/train.py
+      hash: md5
+      md5: 9507caf91fa3f3f40e27a11104364561
+      size: 22842
+    - path: uv.lock
+      hash: md5
+      md5: 4405f8c3326e3511f8ebaea029c81de9
+      size: 201952
+    params:
+      params.yaml:
+        dataset:
+          root: data/raw/plantvillage
+          image_size: 128
+          split_seed: 42
+          val_fraction: 0.2
+          test_fraction: 0.2
+        registry:
+          min_validation_macro_f1: 0.5
+          max_cpu_p95_ms: 500
+        training:
+          seed: 42
+          batch_size: 16
+          learning_rate: 0.001
+          epochs: 8
+          models:
+          - simple_cnn
+          - mobilenet_v3_small
+          pretrained: true
+          num_workers: 0
+          experiment_name: plantguard-plantvillage-benchmark
+    outs:
+    - path: models
+      hash: md5
+      md5: b3f1e1be7f0e3ba3acb78c91af5ecc80.dir
+      size: 26556984
+      nfiles: 11
+  evaluate:
+    cmd: python -m ml.pipeline evaluate
+    deps:
+    - path: data/processed
+      hash: md5
+      md5: c68a8cbdd3b507aafcab169a9165c633.dir
+      size: 91424
+      nfiles: 3
+    - path: data/raw/plantvillage
+      hash: md5
+      md5: f16ba01595f5f83ffa80a74a172c17fd.dir
+      size: 6282093
+      nfiles: 397
+    - path: ml/evaluation/evaluate.py
+      hash: md5
+      md5: b87d85cb0b2a981f63d624584d494b08
+      size: 3243
+    - path: ml/model.py
+      hash: md5
+      md5: 6d19b0527062a8b486ec1ac9c5273854
+      size: 4438
+    - path: ml/pipeline.py
+      hash: md5
+      md5: 256ceaf89b580dfc357ee844c15085a5
+      size: 1683
+    - path: ml/training/train.py
+      hash: md5
+      md5: 9507caf91fa3f3f40e27a11104364561
+      size: 22842
+    - path: models/model_metadata.json
+      hash: md5
+      md5: d37dab591d131baaaddce1bac8946baa
+      size: 1151
+    - path: models/registry
+      hash: md5
+      md5: 5605d9877e45bf48b81511c9e620ab68.dir
+      size: 10165053
+      nfiles: 4
+    - path: uv.lock
+      hash: md5
+      md5: 4405f8c3326e3511f8ebaea029c81de9
+      size: 201952
+    params:
+      params.yaml:
+        dataset:
+          root: data/raw/plantvillage
+          image_size: 128
+          split_seed: 42
+          val_fraction: 0.2
+          test_fraction: 0.2
+    outs:
+    - path: reports/evaluation.json
+      hash: md5
+      md5: 5a05d9c304b60f1a872084bd8709b334
+      size: 1015
+    - path: reports/metrics.json
+      hash: md5
+      md5: 749f162fc65deb8ea00575834d64083d
+      size: 431

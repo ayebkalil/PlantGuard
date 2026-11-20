@@ -1,0 +1,23 @@
+groups:
+  - name: plantguard
+    rules:
+      - alert: PlantGuardModelUnavailable
+        expr: up{job="plantguard"} == 0 or plantguard_model_ready == 0
+        for: 1m
+        annotations:
+          summary: PlantGuard inference is unavailable
+      - alert: PlantGuardHighInferenceLatency
+        expr: histogram_quantile(0.95, sum by (le) (rate(plantguard_inference_seconds_bucket[5m]))) > 0.5
+        for: 2m
+        annotations:
+          summary: Image inference p95 is above 500 ms
+      - alert: PlantGuardHighInferenceErrorRate
+        expr: sum(rate(plantguard_inference_requests_total{status=~"error|unavailable"}[5m])) / clamp_min(sum(rate(plantguard_inference_requests_total{status!="invalid"}[5m])), 0.001) > 0.05
+        for: 2m
+        annotations:
+          summary: Over 5 percent of inference requests fail
+      - alert: PlantGuardInputDrift
+        expr: plantguard_brightness_drift_ready == 1 and plantguard_brightness_drift_alert == 1
+        for: 1m
+        annotations:
+          summary: Recent image brightness differs from the training baseline

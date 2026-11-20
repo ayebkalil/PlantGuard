@@ -1,0 +1,13 @@
+{
+  "model_name": "mobilenet_v3_small",
+  "split": "test",
+  "accuracy": 0.96875,
+  "precision": 0.9714285714285714,
+  "recall": 0.96875,
+  "f1": 0.9686811842427208,
+  "macro_f1": 0.9686811842427208,
+  "weighted_f1": 0.9686811842427208,
+  "samples": 96,
+  "checkpoint_sha256": "68586ad3b08a8e68c5b1b2e8386f3a7c9ef9e6b686195079bddf28f045f6a33c",
+  "split_sha256": "250db17be4783b48a5596b35f43743b4c6d31e4dd49cdc6b841888f473a792f9"
+}

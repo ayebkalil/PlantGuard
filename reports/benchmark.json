@@ -1,0 +1,72 @@
+{
+  "best_model": "mobilenet_v3_small",
+  "best_val_accuracy": 1.0,
+  "best_val_macro_f1": 1.0,
+  "selection_rule": "highest validation macro F1; lower CPU latency breaks ties",
+  "experiments": [
+    {
+      "model_name": "simple_cnn",
+      "architecture": "simple_cnn",
+      "val_accuracy": 0.8545454545454545,
+      "val_macro_f1": 0.8500851081496243,
+      "test_accuracy": 0.8020833333333334,
+      "test_macro_f1": 0.7974803447949227,
+      "latency_ms_cpu": 8.71917000064665,
+      "model_size_mb": 3.938182,
+      "version": "5241c73b1a4c8d5f338f",
+      "latency_p95_ms_cpu": 11.259199993219227,
+      "run_id": "7b0651a938f5414cbc54d57146d5fa21",
+      "checkpoint_sha256": "68c8054ed1db9d19b7493863b5751b434ee6621a6b00bfa410acec7bb774d46f",
+      "split_sha256": "250db17be4783b48a5596b35f43743b4c6d31e4dd49cdc6b841888f473a792f9",
+      "mlflow_status": "FINISHED",
+      "epochs_run": 8
+    },
+    {
+      "model_name": "mobilenet_v3_small",
+      "architecture": "mobilenet_v3_small",
+      "val_accuracy": 1.0,
+      "val_macro_f1": 1.0,
+      "test_accuracy": 0.96875,
+      "test_macro_f1": 0.9686811842427208,
+      "latency_ms_cpu": 6.335620000512184,
+      "model_size_mb": 6.224554,
+      "version": "fae1cbf4f89883dcfb8c",
+      "latency_p95_ms_cpu": 7.837199998903088,
+      "run_id": "ba1a934b891b4fbabd9abc68e25279a1",
+      "checkpoint_sha256": "68586ad3b08a8e68c5b1b2e8386f3a7c9ef9e6b686195079bddf28f045f6a33c",
+      "split_sha256": "250db17be4783b48a5596b35f43743b4c6d31e4dd49cdc6b841888f473a792f9",
+      "mlflow_status": "FINISHED",
+      "epochs_run": 8
+    }
+  ],
+  "environment": {
+    "python": "3.12.10",
+    "pytorch": "2.6.0+cu124",
+    "torchvision": "0.21.0+cu124",
+    "training_device": "cuda"
+  },
+  "dataset": {
+    "counts": {
+      "test": {
+        "Apple___Apple_scab": 32,
+        "Apple___Black_rot": 32,
+        "Apple___healthy": 32
+      },
+      "train": {
+        "Apple___Apple_scab": 83,
+        "Apple___Black_rot": 80,
+        "Apple___healthy": 82
+      },
+      "validation": {
+        "Apple___Apple_scab": 17,
+        "Apple___Black_rot": 20,
+        "Apple___healthy": 18
+      }
+    },
+    "duplicates": 0,
+    "invalid_images": 0,
+    "seed": 42,
+    "train_brightness_mean": 0.45854949792416966,
+    "upstream_test_partition": true
+  }
+}

@@ -5,7 +5,6 @@ import hashlib
 import json
 import os
 import random
-import shutil
 import time
 from pathlib import Path
 from typing import Iterable
@@ -17,48 +16,16 @@ from PIL import Image
 from sklearn.metrics import classification_report, confusion_matrix, precision_recall_fscore_support
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
-from torchvision import models, transforms as T
 
-from ml.data.dataset_registry import DEFAULT_DATASET_ROOT, discover_classes
+from ml.data.dataset_registry import DEFAULT_DATASET_ROOT
 from ml.preprocessing.preprocess import build_split_metadata
 
-IMG = 224
-MEAN, STD = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+from ml.model import DEFAULT_BENCHMARK_MODELS, IMG, MEAN, STD, SUPPORTED_MODELS, build_model, build_transforms
+from ml.registry import register_checkpoint, promote_checkpoint
+
 SPLITS_DIR = Path("data/processed")
 EXPERIMENT_NAME = "plantguard-model-benchmark"
 DEFAULT_TRACKING_URI = "sqlite:///mlruns/mlflow.db"
-
-# Every architecture below can be trained and compared in MLflow.
-# "simple_cnn" is trained from scratch (baseline), the others use ImageNet transfer learning.
-SUPPORTED_MODELS = (
-    "simple_cnn",
-    "mobilenet_v3_small",
-    "mobilenet_v3_large",
-    "resnet18",
-    "resnet50",
-    "efficientnet_b0",
-    "densenet121",
-    "convnext_tiny",
-)
-# Models used when nobody picks any (fast enough for a full benchmark on one laptop).
-DEFAULT_BENCHMARK_MODELS = ("simple_cnn", "mobilenet_v3_small", "resnet18", "efficientnet_b0")
-
-def build_transforms(size: int = IMG):
-    """(train, eval) transforms for a given square input size. The app reads the size from the checkpoint."""
-    train = T.Compose([
-        T.RandomResizedCrop(size, scale=(0.6, 1.0)),
-        T.RandomHorizontalFlip(), T.RandomVerticalFlip(),
-        T.RandomRotation(25),
-        T.ColorJitter(0.4, 0.4, 0.3, 0.05),
-        T.RandomApply([T.GaussianBlur(5)], p=0.3),
-        T.ToTensor(), T.Normalize(MEAN, STD),
-    ])
-    evaluation = T.Compose([T.Resize(int(size * 256 / 224)), T.CenterCrop(size),
-                            T.ToTensor(), T.Normalize(MEAN, STD)])
-    return train, evaluation
-
-
-train_tf, eval_tf = build_transforms(IMG)
 
 
 def _make_grad_scaler(enabled: bool):
@@ -77,71 +44,8 @@ class PlantDataset(Dataset):
 
     def __getitem__(self, i):
         s = self.samples[i]
-        img = Image.open(s["image_path"]).convert("RGB")
-        return self.tf(img), self.c2i[s["label"]]
-
-
-class SimpleCNN(nn.Module):
-    """Small CNN trained from scratch: the baseline every pretrained model must beat."""
-
-    def __init__(self, num_classes: int):
-        super().__init__()
-
-        def block(c_in: int, c_out: int) -> nn.Sequential:
-            return nn.Sequential(
-                nn.Conv2d(c_in, c_out, 3, padding=1, bias=False),
-                nn.BatchNorm2d(c_out),
-                nn.ReLU(inplace=True),
-                nn.MaxPool2d(2),
-            )
-
-        self.features = nn.Sequential(block(3, 32), block(32, 64), block(64, 128), block(128, 256), block(256, 256))
-        self.pool = nn.AdaptiveAvgPool2d(1)
-        self.classifier = nn.Sequential(nn.Flatten(), nn.Dropout(0.3), nn.Linear(256, num_classes))
-
-    def forward(self, x):
-        return self.classifier(self.pool(self.features(x)))
-
-
-def build_model(num_classes: int, model_name: str = "mobilenet_v3_small", pretrained: bool = True) -> nn.Module:
-    model_name = model_name.lower()
-    if model_name == "simple_cnn":
-        return SimpleCNN(num_classes)
-    if model_name in ("mobilenet_v3_small", "mobilenet_v3_large"):
-        if model_name == "mobilenet_v3_small":
-            weights = models.MobileNet_V3_Small_Weights.DEFAULT if pretrained else None
-            model = models.mobilenet_v3_small(weights=weights)
-        else:
-            weights = models.MobileNet_V3_Large_Weights.DEFAULT if pretrained else None
-            model = models.mobilenet_v3_large(weights=weights)
-        model.classifier[-1] = nn.Linear(model.classifier[-1].in_features, num_classes)
-        return model
-    if model_name == "resnet18":
-        weights = models.ResNet18_Weights.DEFAULT if pretrained else None
-        model = models.resnet18(weights=weights)
-        model.fc = nn.Linear(model.fc.in_features, num_classes)
-        return model
-    if model_name == "resnet50":
-        weights = models.ResNet50_Weights.DEFAULT if pretrained else None
-        model = models.resnet50(weights=weights)
-        model.fc = nn.Linear(model.fc.in_features, num_classes)
-        return model
-    if model_name == "efficientnet_b0":
-        weights = models.EfficientNet_B0_Weights.DEFAULT if pretrained else None
-        model = models.efficientnet_b0(weights=weights)
-        model.classifier[1] = nn.Linear(model.classifier[1].in_features, num_classes)
-        return model
-    if model_name == "densenet121":
-        weights = models.DenseNet121_Weights.DEFAULT if pretrained else None
-        model = models.densenet121(weights=weights)
-        model.classifier = nn.Linear(model.classifier.in_features, num_classes)
-        return model
-    if model_name == "convnext_tiny":
-        weights = models.ConvNeXt_Tiny_Weights.DEFAULT if pretrained else None
-        model = models.convnext_tiny(weights=weights)
-        model.classifier[2] = nn.Linear(model.classifier[2].in_features, num_classes)
-        return model
-    raise ValueError(f"Unsupported model '{model_name}'. Supported: {SUPPORTED_MODELS}")
+        with Image.open(s["image_path"]) as image:
+            return self.tf(image.convert("RGB")), self.c2i[s["label"]]
 
 
 @torch.no_grad()
@@ -203,32 +107,25 @@ def _configure_mlflow(experiment_name: str = EXPERIMENT_NAME) -> str:
 
 
 def _load_splits(root: Path, rebuild: bool = False) -> dict:
-    """Reuse data/processed/splits.json when it matches this dataset (rebuilding it
-    validates every image, which is slow). Same seed + same dataset = same split for everyone."""
-    splits_path = SPLITS_DIR / "splits.json"
-    if splits_path.exists() and not rebuild:
-        with open(splits_path, encoding="utf-8") as fp:
-            splits = json.load(fp)
-        try:
-            same_classes = splits["classes"] == discover_classes(root)
-            first = Path(splits["train"][0]["image_path"])
-            if same_classes and first.exists() and first.resolve().is_relative_to(root.resolve()):
-                return splits
-        except (KeyError, IndexError, FileNotFoundError):
-            pass
-    build_split_metadata(root, SPLITS_DIR, random_state=42)
-    with open(splits_path, encoding="utf-8") as fp:
-        return json.load(fp)
+    path = SPLITS_DIR / "splits.json"
+    if rebuild or not path.is_file():
+        build_split_metadata(root, SPLITS_DIR)
+    splits = json.loads(path.read_text(encoding="utf-8"))
+    for partition in ("train", "validation", "test"):
+        for record in splits[partition]:
+            image = (root / record["image_path"]).resolve()
+            if not image.is_relative_to(root.resolve()) or not image.is_file():
+                raise ValueError(f"Invalid prepared image path: {record['image_path']}")
+            record["image_path"] = str(image)
+    return splits
 
 
 def _split_fingerprint(splits: dict) -> str:
-    """Hash of which image is in which split (ignores machine-specific folder paths), so
-    teammates can prove in MLflow that their runs used the exact same train/val/test split."""
     payload = {
-        key: sorted((s["label"], Path(s["image_path"].replace("\\", "/")).name) for s in splits[key])
+        key: sorted((s["label"], s["sha256"]) for s in splits[key])
         for key in ("train", "validation", "test")
     }
-    return hashlib.sha1(json.dumps(payload).encode()).hexdigest()[:12]
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
 
 def _log_confusion_matrix(y_true, y_pred, num_classes: int) -> None:
@@ -256,10 +153,13 @@ def train_model(dataset_root=None, epochs=10, batch_size=32, learning_rate=3e-4,
                 checkpoint_name=None, log_to_mlflow: bool = True, owner: str | None = None,
                 pretrained: bool = True, num_workers: int = 2, seed: int = 42,
                 experiment_name: str = EXPERIMENT_NAME, rebuild_splits: bool = False,
-                image_size: int = IMG, freeze_epochs: int = 0, patience: int = 0, amp: bool = False) -> dict:
+                image_size: int = IMG, freeze_epochs: int = 0, patience: int = 0, amp: bool = False, prepared: bool = False) -> dict:
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
+    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+    torch.use_deterministic_algorithms(True)
+    torch.backends.cudnn.benchmark = False
     device = "cuda" if torch.cuda.is_available() else "cpu"
     root = Path(dataset_root) if dataset_root else DEFAULT_DATASET_ROOT
     out_dir = Path(output_dir) if output_dir else Path("models")
@@ -276,7 +176,7 @@ def train_model(dataset_root=None, epochs=10, batch_size=32, learning_rate=3e-4,
     model_path = out_dir / checkpoint_name
     metadata_path = out_dir / f"model_metadata_{model_name}.json"
 
-    splits = _load_splits(root, rebuild=rebuild_splits)
+    splits = _load_splits(root, rebuild=rebuild_splits or not prepared)
     class_names = splits["classes"]
     c2i = {c: i for i, c in enumerate(class_names)}
 
@@ -342,7 +242,7 @@ def train_model(dataset_root=None, epochs=10, batch_size=32, learning_rate=3e-4,
             "amp": use_amp,
             "seed": seed,
             "max_samples_per_class": max_samples_per_class,
-            "dataset_root": str(root),
+            "dataset_root": root.as_posix(),
             "num_classes": len(class_names),
             "n_train": len(train_samples),
             "n_val": len(splits["validation"]),
@@ -408,14 +308,16 @@ def train_model(dataset_root=None, epochs=10, batch_size=32, learning_rate=3e-4,
         train_time_s = time.perf_counter() - train_start
 
         # Final numbers come from the best epoch (chosen on validation), measured once on the test split.
-        checkpoint = torch.load(model_path, map_location=device)
+        checkpoint = torch.load(model_path, map_location=device, weights_only=True)
         model.load_state_dict(checkpoint["state_dict"])
         test = evaluate(model, test_dl, device, criterion)
         latency = measure_latency_ms(model, size=image_size)
         size_mb = model_path.stat().st_size / 1e6
 
         metadata = {
-            "version": "2",
+            "split_sha256": _split_fingerprint(splits),
+            "run_id": run.info.run_id if run else None,
+            "image_brightness_mean": json.loads((SPLITS_DIR / "validation.json").read_text(encoding="utf-8"))["train_brightness_mean"],
             "architecture": model_name,
             "model_name": model_name,
             "owner": owner,
@@ -437,6 +339,7 @@ def train_model(dataset_root=None, epochs=10, batch_size=32, learning_rate=3e-4,
             "train_time_s": train_time_s,
             "model_path": str(model_path),
         }
+        metadata.update(register_checkpoint(model_path, metadata, out_dir))
         with open(metadata_path, "w", encoding="utf-8") as fp:
             json.dump(metadata, fp, indent=2)
         print(f"[{model_name}] best epoch {best_epoch}: val_macro_f1={best_f1:.4f}  "
@@ -480,11 +383,14 @@ def run_model_experiments(dataset_root=None, epochs=5, batch_size=32, learning_r
                           pretrained: bool = True, num_workers: int = 2, promote: bool = True,
                           experiment_name: str = EXPERIMENT_NAME, rebuild_splits: bool = False,
                           image_size: int = IMG, freeze_epochs: int = 0, patience: int = 0,
-                          amp: bool = False) -> dict:
+                          amp: bool = False, seed: int = 42, prepared: bool = False,
+                          min_macro_f1: float = 0.0, max_latency_ms: float = float("inf")) -> dict:
     model_names = list(model_names or DEFAULT_BENCHMARK_MODELS)
     out_dir = Path(output_dir) if output_dir else Path("models")
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    if rebuild_splits or not prepared:
+        build_split_metadata(dataset_root, SPLITS_DIR, random_state=seed)
     results = []
     for model_name in model_names:
         metadata = train_model(
@@ -500,7 +406,8 @@ def run_model_experiments(dataset_root=None, epochs=5, batch_size=32, learning_r
             pretrained=pretrained,
             num_workers=num_workers,
             experiment_name=experiment_name,
-            rebuild_splits=rebuild_splits,
+            seed=seed,
+            prepared=True,
             image_size=image_size,
             freeze_epochs=freeze_epochs,
             patience=patience,
@@ -516,18 +423,15 @@ def run_model_experiments(dataset_root=None, epochs=5, batch_size=32, learning_r
             "latency_ms_cpu": metadata["latency_ms_cpu"],
             "model_size_mb": metadata["model_size_mb"],
             "model_path": metadata["model_path"],
+            "version": metadata["version"],
+            "latency_p95_ms_cpu": metadata["latency_p95_ms_cpu"],
         })
 
     # The winner is chosen on the validation split only (macro F1, faster model wins a tie),
     # so the test split stays an honest final report.
     best_model = max(results, key=lambda item: (item["val_macro_f1"], -item["latency_ms_cpu"]))
     if promote:
-        best_checkpoint = Path(best_model["model_path"])
-        best_metadata_path = out_dir / f"model_metadata_{best_model['model_name']}.json"
-        if best_checkpoint.exists():
-            shutil.copy2(best_checkpoint, out_dir / "plantguard_model.pt")
-        if best_metadata_path.exists():
-            shutil.copy2(best_metadata_path, out_dir / "model_metadata.json")
+        promote_checkpoint(out_dir, best_model["version"], min_macro_f1, max_latency_ms)
 
     report = {
         "best_model": best_model["model_name"],
@@ -550,6 +454,7 @@ def _parse_args() -> argparse.Namespace:
                         help="architectures to train (default: %(default)s)")
     parser.add_argument("--owner", default=None, help="who owns these runs (logged as an MLflow tag)")
     parser.add_argument("--epochs", type=int, default=6)
+    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--lr", type=float, default=3e-4)
     parser.add_argument("--max-samples-per-class", type=int, default=None, help="subsample training data for quick tests")

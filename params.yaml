@@ -1,27 +1,20 @@
 dataset:
-  root: "archive/plantvillage dataset/color"
-  external_eval: "archive/plantvillage dataset/segmented"
-  image_size: 224
-  valid_extensions: [".jpg", ".jpeg", ".png", ".bmp"]
-  train_fraction: 0.7
-  val_fraction: 0.15
-  test_fraction: 0.15
+  root: data/raw/plantvillage
+  image_size: 128
+  split_seed: 42
+  val_fraction: 0.20
+  test_fraction: 0.20
 
 training:
   seed: 42
   batch_size: 16
   learning_rate: 0.001
-  epochs: 5
-  optimizer: "adam"
-  architecture: "simple_cnn"
-  run_name: "plantguard-baseline"
-
-monitoring:
-  drift_threshold: 0.15
-  latency_threshold_ms: 500
-  confidence_threshold: 0.7
+  epochs: 8
+  models: [simple_cnn, mobilenet_v3_small]
+  pretrained: true
+  num_workers: 0
+  experiment_name: plantguard-plantvillage-benchmark
 
 registry:
-  model_name: "PlantGuardClassifier"
-  production_stage: "production"
-  promotion_rule: "macro_f1 >= production_macro_f1 and latency_ms <= 500"
+  min_validation_macro_f1: 0.50
+  max_cpu_p95_ms: 500

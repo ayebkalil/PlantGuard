@@ -1,25 +1,51 @@
 stages:
   prepare_data:
-    cmd: py -m ml.data.prepare_data
+    cmd: python -m ml.pipeline prepare
     deps:
-      - archive/plantvillage dataset/color
-      - params.yaml
+      - ${dataset.root}
+      - ml/data/dataset_registry.py
+      - ml/preprocessing/preprocess.py
+      - ml/pipeline.py
+      - uv.lock
+    params:
+      - dataset
     outs:
       - data/processed
-
   train:
-    cmd: py -m ml.training.train
+    cmd: python -m ml.pipeline train
     deps:
       - data/processed
-      - params.yaml
+      - ${dataset.root}
+      - ml/model.py
+      - ml/training/train.py
+      - ml/preprocessing/preprocess.py
+      - ml/registry.py
+      - ml/pipeline.py
+      - uv.lock
+    params:
+      - dataset
+      - training
+      - registry
     outs:
-      - models
-
+      - models:
+          persist: true
   evaluate:
-    cmd: py -m ml.evaluation.evaluate
+    cmd: python -m ml.pipeline evaluate
     deps:
-      - models
+      - models/model_metadata.json
+      - models/registry
       - data/processed
-      - params.yaml
+      - ${dataset.root}
+      - ml/model.py
+      - ml/evaluation/evaluate.py
+      - ml/training/train.py
+      - ml/pipeline.py
+      - uv.lock
+    params:
+      - dataset
     metrics:
-      - mlruns/metrics.json
+      - reports/metrics.json:
+          cache: false
+    outs:
+      - reports/evaluation.json:
+          cache: false

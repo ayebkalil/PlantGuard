@@ -4,36 +4,65 @@ on:
   push:
     branches: ["**"]
   pull_request:
-    branches: ["main", "master"]
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  OMP_NUM_THREADS: "2"
+  MKL_NUM_THREADS: "2"
+  PYTHONHASHSEED: "42"
 
 jobs:
-  quality:
+  verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
         with:
-          python-version: '3.11'
-
-      - name: Install dependencies
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.10.10"
+          enable-cache: true
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install locked dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Configure Python path
-        run: echo "PYTHONPATH=${{ github.workspace }}" >> "$GITHUB_ENV"
-
-      - name: Lint
+          uv sync --locked
+          npm ci --prefix frontend
+      - name: Check syntax and run tests with coverage
         run: |
-          python -m compileall backend ml
-
-      - name: Run unit tests
+          uv run --locked python -m compileall -q backend ml
+          uv run --locked python -m pytest --cov=backend.app --cov=ml --cov-report=term-missing --cov-report=xml
+      - name: Build React application
+        run: npm run build --prefix frontend
+      - name: Verify DVC graph and Docker models
         run: |
-          python -m pytest -q backend/tests
-
-      - name: Build Docker image
+          uv run --locked dvc dag
+          docker compose config --quiet
+          docker compose build
+      - name: Verify container health and frontend proxy
         run: |
-          docker build -t plantguard-ci .
+          docker compose up -d --no-build backend frontend
+          curl --retry 20 --retry-all-errors --retry-delay 2 --fail http://localhost:3000/api/health
+          curl --fail http://localhost:3000/ | grep -q PlantGuard
+          curl --fail http://localhost:3000/api/metrics/prometheus | grep -q plantguard_model_ready
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: unit-test-coverage
+          path: coverage.xml
+      - name: Compose logs
+        if: failure()
+        run: docker compose logs --tail=100
+      - name: Stop containers
+        if: always()
+        run: docker compose down

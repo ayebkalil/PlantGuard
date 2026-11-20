@@ -1,58 +1,62 @@
 services:
   backend:
+    image: ${PLANTGUARD_BACKEND_IMAGE:-plantguard-backend:local}
     build: .
-    container_name: plantguard-backend
-    command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir backend --reload-dir ml
-    ports:
-      - "8000:8000"
     environment:
-      - APP_ENV=development
-      - MODEL_PATH=/app/models/plantguard_model.pt
-      - MODEL_META_PATH=/app/models/model_metadata.json
-      - CONFIDENCE_THRESHOLD=0.6
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      MODEL_PATH: /app/models/plantguard_model.pt
+      MODEL_META_PATH: /app/models/model_metadata.json
+      CONFIDENCE_THRESHOLD: ${CONFIDENCE_THRESHOLD:-0.6}
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-8388608}
+      MAX_BATCH_FILES: ${MAX_BATCH_FILES:-8}
+      DRIFT_THRESHOLD: ${DRIFT_THRESHOLD:-0.15}
+      DRIFT_MIN_SAMPLES: ${DRIFT_MIN_SAMPLES:-20}
+      DRIFT_WINDOW: ${DRIFT_WINDOW:-200}
     volumes:
-      - ./backend:/app/backend
-      - ./ml:/app/ml
-      - ./models:/app/models
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
-    depends_on:
-      - mlflow
+      - type: bind
+        source: ${PLANTGUARD_MODELS_DIR:-./models}
+        target: /app/models
+        read_only: true
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m
 
   frontend:
-    image: node:20-alpine
-    container_name: plantguard-frontend
-    working_dir: /app/frontend
-    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 3000"
+    image: ${PLANTGUARD_FRONTEND_IMAGE:-plantguard-frontend:local}
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
     ports:
-      - "3000:3000"
-    environment:
-      - VITE_API_URL=http://localhost:8000
-      - CHOKIDAR_USEPOLLING=true
-    volumes:
-      - ./frontend:/app/frontend
-      - frontend_node_modules:/app/frontend/node_modules
+      - "127.0.0.1:${PLANTGUARD_PORT:-3000}:8080"
     depends_on:
       backend:
         condition: service_healthy
 
   mlflow:
-    image: ghcr.io/mlflow/mlflow:v2.17.2
-    container_name: plantguard-mlflow
-    command: >
+    profiles: [tracking]
+    image: ghcr.io/mlflow/mlflow:v3.16.1
+    command: >-
       mlflow server --host 0.0.0.0 --port 5000
+      --allowed-hosts localhost:5000,127.0.0.1:5000,localhost,127.0.0.1
       --backend-store-uri sqlite:////mlruns/mlflow.db
-      --default-artifact-root mlflow-artifacts:/
-      --serve-artifacts --artifacts-destination /mlruns
+      --artifacts-destination /mlruns/artifacts --serve-artifacts
     ports:
-      - "5000:5000"
+      - "127.0.0.1:5000:5000"
     volumes:
       - ./mlruns:/mlruns
 
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      backend:
+        condition: service_healthy
+
 volumes:
-  frontend_node_modules:
+  prometheus_data:

@@ -1,5 +1,9 @@
 # Datasets and large files (root-level only, so ml/data/ source code is tracked)
-/data/
+/data/*
+!/data/raw/
+/data/raw/*
+!/data/raw/plantvillage.dvc
+!/data/raw/.gitignore
 /archive/
 archive*.zip
 *.csv
@@ -40,3 +44,8 @@ dist/
 .env
 .env.*
 !.env.example
+# Local test and release artifacts
+.coverage
+coverage.xml
+htmlcov/
+reports/local/

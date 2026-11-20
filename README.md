@@ -42,7 +42,7 @@ Each checkpoint has a permanent ID under `models/registry/`. Promotion checks SH
 uv run --locked python -m ml.registry VERSION_ID --min-f1 0.5 --max-latency-ms 500 --rollback
 ```
 
-Use `dvc remote add --local -d private-store PATH_OR_URL` with a team-approved storage location, then run `uv run --locked dvc push` to share the snapshot and model. On another machine configure the same authorized storage and run `uv run --locked dvc pull`. Keep credentials out of Git and mount artifacts read-only for inference. The public repository contains the pointers and evidence reports.
+Configure a team-approved storage location with `uv run --locked dvc remote add --local -d private-store PATH_OR_URL`. After committing the DVC pointers, run `uv run --locked dvc push data/raw/plantvillage.dvc` to share the source data and `uv run --locked dvc push` to share the pipeline outputs. On another machine, configure the same authorized storage and restore with `uv run --locked dvc pull data/raw/plantvillage.dvc` followed by `uv run --locked dvc pull`. Keep credentials out of Git and mount artifacts read-only for inference. The public repository contains the pointers and evidence reports.
 
 ## Run the application
 

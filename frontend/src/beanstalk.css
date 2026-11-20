@@ -1,0 +1,41 @@
+.bean-film { position:relative; width:100%; height:100svh; overflow:hidden; isolation:isolate; background:radial-gradient(ellipse at 55% 46%,#26322a,#0c1512 66%,#070c0b); }
+.bean-film h1 { position:absolute; z-index:2; top:clamp(22px,4.2vh,55px); left:clamp(22px,4.6vw,90px); margin:0; color:#f4f2db; font:normal clamp(30px,3.6vw,62px)/1 Georgia,'Times New Roman',serif; letter-spacing:-.065em; pointer-events:none; }
+.garden-canvas,.garden-canvas canvas,.bean-film .leaf-access { position:absolute;inset:0;width:100%;height:100%; display:block; }
+.bean-film .leaf-access {border:0;padding:0;pointer-events:none;}
+.bean-film .leaf-access a {position:absolute;width:40px;height:40px;padding:0;transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;}
+.bean-film .leaf-access a:focus-visible {outline:2px solid #eaf1ba;outline-offset:3px;}
+.bean-film.poster {background:#0b120e url('/botany/beanstalk-poster.webp') center/contain no-repeat}
+.bean-film.poster a {pointer-events:auto;width:9%;height:8%}
+@media(max-width:600px){.bean-film h1{font-size:36px;top:25px;left:22px}}
+
+.garden-film {position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;}
+.bean-film.poster .leaf-access {inset:50% auto auto 50%;width:min(100vw,133.333svh);height:auto;aspect-ratio:4/3;transform:translate(-50%,-50%);}
+.bean-film.poster a:nth-child(1){left:41.3%;top:63.5%}.bean-film.poster a:nth-child(2){left:61.1%;top:64.5%}.bean-film.poster a:nth-child(3){left:38.6%;top:53%}.bean-film.poster a:nth-child(4){left:63.1%;top:45.6%}
+.bean-film.poster a:hover {outline:1px solid #e2eac7;}
+.implement-access { position:absolute;inset:0;pointer-events:none; }
+.implement-access button { position:absolute;transform:translate(-50%,-50%);width:44px;height:44px;
+  border:0;border-radius:50%;padding:0;background:transparent;pointer-events:none; }
+.implement-access button:focus-visible { outline:2px solid #eaf1ba;outline-offset:2px; }
+@media (pointer:coarse) { .implement-access button { pointer-events:auto; } }
+.bean-film[data-sky="day"] { background-color:#cfe2dd; }
+.bean-film[data-sky="day"] h1 { color:#172e36; }
+.bean-film.poster[data-sky="day"] { background-image:url('/botany/beanstalk-poster-day.webp'); }
+.sky-switch { position:absolute;z-index:3;top:clamp(20px,4.2vh,55px);right:clamp(20px,4.6vw,90px);
+  display:flex;align-items:center;justify-content:space-around;width:82px;height:44px;padding:3px;
+  border:1px solid #d3dfe25c;border-radius:24px;color:#f0f1e8;background:#162638db; }
+.sky-switch::before { content:'';position:absolute;left:4px;top:4px;width:35px;height:34px;
+  border-radius:18px;background:#dbe4e8;transition:transform .28s ease,background .28s; }
+.sky-switch svg { position:relative;width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.65;
+  stroke-linecap:round;stroke-linejoin:round; }
+.sky-switch svg:first-child {color:#203248;}
+.sky-switch[aria-pressed="true"] { background:#ecf3f0dc;color:#536768;border-color:#657e857a; }
+.sky-switch[aria-pressed="true"]::before { transform:translateX(37px);background:#374e52; }
+.sky-switch[aria-pressed="true"] svg:last-child { color:#ffe7a6; }
+.sky-switch:focus-visible { outline:2px solid currentColor;outline-offset:4px; }
+@media(max-width:600px) { .sky-switch {top:21px;right:20px;} }
+@media (prefers-reduced-motion:reduce) { .sky-switch::before {transition:none;} }
+.flight-credit {position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+.film-airspace {position:absolute;left:50%;top:50%;width:min(100vw,133.333svh);aspect-ratio:4/3;
+  transform:translate(-50%,-50%);overflow:hidden;pointer-events:none;}
+.film-airspace canvas {display:block;position:absolute;left:0;top:0;height:auto;}
+[data-sky="night"] .film-airspace canvas {filter:brightness(.84);}

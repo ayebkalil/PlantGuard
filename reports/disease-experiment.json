@@ -1,0 +1,45 @@
+{
+  "task": "disease",
+  "experiment": "plantguard-disease-experiment",
+  "git_sha": "30b6f0451ba2b63bf6350f0d785a066bddb4a966",
+  "split_sha256": "250db17be4783b48a5596b35f43743b4c6d31e4dd49cdc6b841888f473a792f9",
+  "primary_validation_metric": "val_macro_f1",
+  "baseline": {
+    "architecture": "mobilenet_v3_small",
+    "version": "fae1cbf4f89883dcfb8c",
+    "checkpoint_sha256": "68586ad3b08a8e68c5b1b2e8386f3a7c9ef9e6b686195079bddf28f045f6a33c",
+    "mlflow_run_id": "ba1a934b891b4fbabd9abc68e25279a1"
+  },
+  "candidate": {
+    "architecture": "efficientnet_b0",
+    "version": "95af1bd8cc9447fb78d3",
+    "checkpoint_sha256": "42fec856d8d316d2b4a2a31ee07a4bab6e6ad45a1ff933ef705cd619d33f75e5",
+    "mlflow_run_id": "160a1d4c1d6f4c6a8e3061846b2322f8"
+  },
+  "metrics": {
+    "test_accuracy": {
+      "baseline": 0.96875,
+      "candidate": 0.9895833333333334,
+      "delta": 0.02083333333333337
+    },
+    "test_macro_f1": {
+      "baseline": 0.9686811842427208,
+      "candidate": 0.9895807895807897,
+      "delta": 0.020899605338068894
+    },
+    "val_accuracy": {
+      "baseline": 1.0,
+      "candidate": 1.0,
+      "delta": 0.0
+    },
+    "val_macro_f1": {
+      "baseline": 1.0,
+      "candidate": 1.0,
+      "delta": 0.0
+    }
+  },
+  "latency_p95_ms_cpu": {
+    "baseline": 7.837199998903088,
+    "candidate": 26.13680000649765
+  }
+}

@@ -104,4 +104,3 @@ if __name__ == "__main__":
     tracking_uri = os.getenv("MLFLOW_TRACKING_URI") or f"sqlite:///{(output / 'mlflow.db').as_posix()}"
     recipe = read_json(Path("experiments/candidate.json"))
     run_candidate(recipe, output, args.data, tracking_uri, args.require_gpu)
-

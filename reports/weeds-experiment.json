@@ -1,0 +1,55 @@
+{
+  "task": "weeds",
+  "experiment": "plantguard-weeds-experiment",
+  "git_sha": "78a535c1f8d535c53acea4ab59fdeaa10dfbda51",
+  "split_sha256": "5920c56152cd54ba09260bdddacedc1c5bfc0b3e58df80a7d505cf697a3c00e6",
+  "primary_validation_metric": "val_mean_iou",
+  "baseline": {
+    "architecture": "unet32",
+    "version": "2afa52118ab0-631097c1ddef",
+    "checkpoint_sha256": "631097c1ddef374b1be8686b8657a1c7f274304b7ca34fbdb9427664e58d9dab",
+    "mlflow_run_id": "e36fd65b53ce4369bd3a9816d757badc"
+  },
+  "candidate": {
+    "architecture": "unet32",
+    "version": "84e6847b15d4-6352e75995a0",
+    "checkpoint_sha256": "6352e75995a0e124684db9e40c70224a0176424239a5b92787859a9e6b03ea7f",
+    "mlflow_run_id": "84e6847b15d44b79bef8adef63fd9e81"
+  },
+  "metrics": {
+    "test_mean_iou": {
+      "baseline": 0.6950664415728781,
+      "candidate": 0.7494519522678819,
+      "delta": 0.05438551069500375
+    },
+    "test_pixel_accuracy": {
+      "baseline": 0.9673372804650706,
+      "candidate": 0.9708656299058085,
+      "delta": 0.003528349440737877
+    },
+    "test_weed_iou": {
+      "baseline": 0.57730487951085,
+      "candidate": 0.6499376419758586,
+      "delta": 0.0726327624650086
+    },
+    "val_mean_iou": {
+      "baseline": 0.7159758930839416,
+      "candidate": 0.7511857740945663,
+      "delta": 0.03520988101062472
+    },
+    "val_pixel_accuracy": {
+      "baseline": 0.9676254967131083,
+      "candidate": 0.9697257959674255,
+      "delta": 0.002100299254317206
+    },
+    "val_weed_iou": {
+      "baseline": 0.6083782569631626,
+      "candidate": 0.648203839015107,
+      "delta": 0.03982558205194442
+    }
+  },
+  "latency_p95_ms_cpu": {
+    "baseline": 62.51225249995968,
+    "candidate": 101.06386000552448
+  }
+}

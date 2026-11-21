@@ -1,0 +1,19 @@
+{
+  "task": "pests",
+  "model": "yolov8s",
+  "experiment": "plantguard-pests-experiment",
+  "seed": 42,
+  "args": [
+    "--epochs",
+    "36",
+    "--size",
+    "512",
+    "--batch",
+    "8",
+    "--lr",
+    "0.001",
+    "--limit",
+    "1000",
+    "--cosine"
+  ]
+}

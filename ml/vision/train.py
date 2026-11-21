@@ -168,9 +168,11 @@ def yolo_train(args, name, manifest, directory, device, history):
 
     settings.update({"mlflow": False})
     model = YOLO(f"{name}.yaml" if args.scratch else f"{name}.pt")
+    schedule = {"optimizer": "AdamW", "lr0": args.lr, "cos_lr": True,
+                "close_mosaic": 8, "patience": 12} if args.cosine else {}
     model.train(data=str(manifest), epochs=args.epochs, imgsz=args.size, batch=args.batch,
                 seed=args.seed, deterministic=True, device=0 if device == "cuda" else "cpu",
-                project=str(directory.resolve()), name="yolo", workers=2, plots=True)
+                project=str(directory.resolve()), name="yolo", workers=2, plots=True, **schedule)
     results = Path(model.trainer.save_dir) / "results.csv"
     if results.is_file():
         with results.open(newline="") as file:
@@ -263,6 +265,8 @@ def train(args):
                   "preprocessing": "rgb16-scale-dice" if args.task == "weeds" else "dataset-adapter-v1",
                   "git_sha": commit, "split_sha256": digest, "sample_limit": args.limit or 0,
                   **{f"{key}_count": len(value) for key, value in manifest.items()}}
+        if args.cosine:
+            params.update(optimizer="AdamW", lr_schedule="cosine", close_mosaic=8, patience=12)
         with mlflow.start_run(run_name=model) as run:
             directory = out / f"{model}-{run.info.run_id[:8]}"
             directory.mkdir()
@@ -300,4 +304,5 @@ if __name__ == "__main__":
     parser.add_argument("--require-gpu", action="store_true")
     parser.add_argument("--expected-split", help="require this split SHA-256 before training")
     parser.add_argument("--experiment", help="MLflow experiment name")
+    parser.add_argument("--cosine", action="store_true", help="use cosine learning-rate decay")
     train(parser.parse_args())

@@ -20,7 +20,7 @@ from ml.registry import save_json, sha256
 from ml.vision.artifacts import TASK_KINDS
 from ml.vision.data import fruit_rows, pest_data, split_classifier, split_hash, weed_data
 
-ARCHS = {"pests": ("yolov8n", "yolov8s"), "weeds": ("unet16", "unet32"),
+ARCHS = {"pests": ("yolov8n", "yolov8s", "yolo11s"), "weeds": ("unet16", "unet32"),
          "fruit": ("efficientnet_b0", "mobilenet_v3_small")}
 
 
@@ -243,7 +243,9 @@ def train(args):
         raise RuntimeError("A Kaggle GPU must be selected for this run")
     torch.set_num_threads(2)
     if args.task == "pests":
-        labels, rows, manifest, provenance = pest_data(args.data, work, args.seed, args.limit)
+        labels, rows, manifest, provenance = pest_data(
+            args.data, work, args.seed, args.limit, expand_training=args.expand_training
+        )
     elif args.task == "weeds":
         labels, rows, provenance = weed_data(args.data, work, args.limit)
         manifest = {key: sorted((paths[0].name, digest) for paths, _, digest in values) for key, values in rows.items()}
@@ -254,8 +256,9 @@ def train(args):
         manifest = {key: sorted((label, digest) for _, label, digest in values) for key, values in rows.items()}
 
     digest = split_hash(manifest)
-    if args.expected_split and digest != args.expected_split:
-        raise ValueError(f"Expected split {args.expected_split}, found {digest}")
+    comparison_split = provenance.get("original_split_sha256", digest)
+    if args.expected_split and comparison_split != args.expected_split:
+        raise ValueError(f"Expected split {args.expected_split}, found {comparison_split}")
     tracking = os.getenv("MLFLOW_TRACKING_URI") or f"sqlite:///{(out / 'mlflow.db').as_posix()}"
     mlflow.set_tracking_uri(tracking)
     mlflow.set_experiment(args.experiment or f"plantguard-{args.task}")
@@ -273,6 +276,7 @@ def train(args):
                   "batch": args.batch, "learning_rate": args.lr, "device": device, "scratch": args.scratch,
                   "preprocessing": "rgb16-scale-dice" if args.task == "weeds" else "dataset-adapter-v1",
                   "git_sha": commit, "split_sha256": digest, "sample_limit": args.limit or 0,
+                  "expanded_training": args.expand_training,
                   **{f"{key}_count": len(value) for key, value in manifest.items()}}
         if args.cosine:
             params.update(optimizer="AdamW", lr_schedule="cosine", close_mosaic=5, patience=10)
@@ -308,6 +312,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=.001)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--limit", type=int)
+    parser.add_argument("--expand-training", action="store_true", help="use additional IP102 training images while preserving evaluation splits")
     parser.add_argument("--cpu", action="store_true")
     parser.add_argument("--scratch", action="store_true")
     parser.add_argument("--require-gpu", action="store_true")

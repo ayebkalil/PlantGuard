@@ -1,18 +1,10 @@
-# Pest detection experiment
+# Expanded IP102 training experiment
 
-Train YOLOv8s for up to 20 epochs at 512 pixels. Use AdamW and cosine decay, and disable mosaic augmentation in the final five epochs. Compare validation and held-out mAP50–95 against the published YOLOv8n run.
-
-From this branch, set `MLFLOW_TRACKING_URI` to your team’s MLflow server to compare runs in one place. Otherwise the runner creates a tracking database in the output directory.
+Train YOLO11s at 640 pixels on the full clean IP102 training partition. Preserve the validation and test samples from the 1,000-per-split YOLOv8 experiments. The preparer verifies the original split fingerprint and reserves validation and test image hashes before admitting additional training samples. The full training manifest receives its own fingerprint.
 
 ```sh
-python -m ml.experiments --require-gpu --output data/experiment-pests
-```
-
-To reproduce on Kaggle, push your commit and run this from the branch. The script pins the Git commit and uses the parameters in `experiments/candidate.json`.
-
-```sh
+python -m ml.experiments --require-gpu --output data/experiment-pests-expanded
 python kaggle/prepare_kernel.py pests --experiment --username YOUR_KAGGLE_USERNAME --output data/kaggle-experiment
-kaggle kernels push -p data/kaggle-experiment/pests --accelerator NvidiaTeslaT4
 ```
 
-The runner verifies the baseline split fingerprint before training and saves `baseline-comparison.json` with the two run IDs, checkpoint hashes and metric deltas. CPU timings can vary across hosts and runtime sessions. Checkpoint export stays in the experiment output.
+Compare with YOLOv8s on validation mAP50–95 and check test mAP50–95, precision, recall and CPU latency. The reference candidate scored 9.43% test mAP50–95 and 20.03% recall. The changes in data volume, architecture and input resolution are evaluated together in this recipe.

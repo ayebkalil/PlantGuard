@@ -26,6 +26,14 @@ def run_candidate(recipe, output, dataset, tracking_uri, require_gpu):
 
     task, model = recipe["task"], recipe["model"]
     baseline, expected_split, primary = load_baseline(task)
+    previous = read_json(Path("reports/pests-experiment.json"))
+    if previous["split_sha256"] != expected_split:
+        raise ValueError("Prior pest experiment used a different evaluation split")
+    baseline = {
+        **previous["candidate"],
+        **{key: values["candidate"] for key, values in previous["metrics"].items()},
+        "cpu_p95_ms": previous["latency_p95_ms_cpu"]["candidate"],
+    }
     baseline_id = baseline.get("mlflow_run_id") or baseline["run_id"]
     output.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
@@ -62,7 +70,9 @@ def run_candidate(recipe, output, dataset, tracking_uri, require_gpu):
         metrics = candidate["metrics"]
         candidate_id = candidate["source_run_id"]
         version = f"{candidate_id[:12]}-{candidate['checkpoint_sha256'][:12]}"
-    if candidate["split_sha256"] != expected_split:
+    candidate_split = candidate["split_sha256"]
+    comparison_split = candidate.get("dataset", {}).get("original_split_sha256", candidate_split)
+    if comparison_split != expected_split:
         raise ValueError("Candidate result does not match the baseline split.")
 
     comparable = sorted(name for name in baseline.keys() & metrics.keys()
@@ -72,6 +82,7 @@ def run_candidate(recipe, output, dataset, tracking_uri, require_gpu):
         "experiment": recipe["experiment"],
         "git_sha": candidate.get("params", {}).get("git_sha", commit),
         "split_sha256": expected_split,
+        "candidate_split_sha256": candidate_split,
         "primary_validation_metric": f"val_{primary}",
         "baseline": {key: baseline[key] for key in ("architecture", "version", "checkpoint_sha256")},
         "candidate": {"architecture": model, "version": version, "checkpoint_sha256": candidate["checkpoint_sha256"]},
@@ -90,7 +101,7 @@ def run_candidate(recipe, output, dataset, tracking_uri, require_gpu):
     client.set_tag(candidate_id, "plantguard.baseline_run_id", baseline_id)
     client.set_tag(candidate_id, "plantguard.candidate_version", version)
     client.set_tag(candidate_id, "plantguard.git_sha", comparison["git_sha"])
-    client.set_tag(candidate_id, "plantguard.split_sha256", expected_split)
+    client.set_tag(candidate_id, "plantguard.split_sha256", candidate_split)
     for name, values in comparison["metrics"].items():
         client.log_metric(candidate_id, f"baseline_{name}", values["baseline"])
         client.log_metric(candidate_id, f"candidate_{name}", values["candidate"])

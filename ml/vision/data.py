@@ -191,9 +191,11 @@ def read_voc(path):
     return ET.fromstring(data)
 
 
-def pest_data(source, work, seed, limit):
+def pest_data(source, work, seed, limit, *, expand_training=False):
     import yaml
 
+    if expand_training and not limit:
+        raise ValueError("Training expansion requires the original sample limit")
     root = source or download_ip102(work)
     annotations = {p.stem: p for p in root.rglob("*.xml")}
     images = {p.stem: p for p in image_files(root)}
@@ -229,15 +231,15 @@ def pest_data(source, work, seed, limit):
         names = {int(number) - 1: name.strip() for number, name in (line.strip().split(maxsplit=1)
                  for line in taxonomy.splitlines() if line.strip())}
         labels = [f"{names[int(label)]} (IP102 {label})" for label in raw_labels]
-    destination = work / "yolo"
+    destination = work / ("yolo-expanded" if expand_training else "yolo")
     digests = {}
     image_splits = {}
-    for split, names in splits.items():
-        picture_dir, label_dir = destination / "images" / split, destination / "labels" / split
+    def add_images(split, names):
+        picture_dir = destination / "images" / split
+        label_dir = destination / "labels" / split
         picture_dir.mkdir(parents=True, exist_ok=True)
         label_dir.mkdir(parents=True, exist_ok=True)
-        digests[split] = []
-        for key in [key for key in names if key not in invalid_xml][:limit]:
+        for key in names:
             img = images[key]
             image_sha = file_hash(img)
             if image_sha in image_splits and image_splits[image_sha] != split:
@@ -248,16 +250,33 @@ def pest_data(source, work, seed, limit):
                 continue
             image_splits[image_sha] = split
             target = picture_dir / img.name
-            shutil.copyfile(img, target)
+            if not target.exists() or file_hash(target) != image_sha:
+                shutil.copyfile(img, target)
             (label_dir / f"{img.stem}.txt").write_text("\n".join(boxes), newline="\n")
             digests[split].append((key, image_sha, file_hash(annotations[key])))
+
+    for split, names in splits.items():
+        digests[split] = []
+        add_images(split, [key for key in names if key not in invalid_xml][:limit])
         if not digests[split]:
             raise ValueError(f"IP102 split {split} has no boxed images")
+
+    original_split_sha = split_hash(digests)
+    if expand_training:
+        # Reserve the exact original eval set before admitting more training images.
+        add_images("train", [key for key in splits["train"] if key not in invalid_xml][limit:])
     manifest = destination / "data.yaml"
-    manifest.write_text(yaml.safe_dump({"path": str(destination.resolve()), "train": "images/train",
-                                       "val": "images/val", "test": "images/test", "names": labels}))
+    split_paths = {}
+    for split, records in digests.items():
+        split_file = destination / f"{split}.txt"
+        split_file.write_text("".join(
+            f"./images/{split}/{images[key].name}\n" for key, _, _ in records
+        ), encoding="utf-8")
+        split_paths[split] = split_file.name
+    manifest.write_text(yaml.safe_dump({"path": str(destination.resolve()), **split_paths, "names": labels}))
     return labels, manifest, digests, {"source": "https://github.com/xpwu95/IP102", "release": "v1.1 VOC2007",
                                       "official_test": True, "annotation_classes": len(labels),
+                                      "original_split_sha256": original_split_sha,
                                       "invalid_annotations_omitted": len(invalid_xml)}
 
 

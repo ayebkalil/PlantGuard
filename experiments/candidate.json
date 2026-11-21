@@ -1,0 +1,20 @@
+{
+  "task": "fruit",
+  "model": "efficientnet_b0",
+  "experiment": "plantguard-fruit-experiment",
+  "seed": 42,
+  "args": [
+    "--epochs",
+    "12",
+    "--size",
+    "224",
+    "--batch",
+    "16",
+    "--lr",
+    "0.0006",
+    "--limit",
+    "480",
+    "--cosine",
+    "--fruit-color-jitter"
+  ]
+}

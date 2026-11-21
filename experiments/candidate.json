@@ -1,0 +1,22 @@
+{
+  "task": "disease",
+  "model": "efficientnet_b0",
+  "experiment": "plantguard-disease-experiment",
+  "seed": 42,
+  "args": [
+    "--epochs",
+    "12",
+    "--image-size",
+    "160",
+    "--batch-size",
+    "16",
+    "--lr",
+    "0.00045",
+    "--freeze-epochs",
+    "1",
+    "--patience",
+    "4",
+    "--num-workers",
+    "0"
+  ]
+}

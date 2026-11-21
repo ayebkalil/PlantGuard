@@ -1,0 +1,72 @@
+{
+  "task": "fruit",
+  "validation_metric": "macro_f1",
+  "winner": "efficientnet_b0-f7c7851c",
+  "split_sha256": "385f4262fd111282ba94bec9b753347ef6a7c6aa53f817f745d2a7ea0369150e",
+  "runs": [
+    {
+      "bundle": "efficientnet_b0-f7c7851c",
+      "architecture": "efficientnet_b0",
+      "val_macro_f1": 0.9953702587323278,
+      "val_accuracy": 0.9953703703703703,
+      "test_macro_f1": 0.989581048475543,
+      "test_accuracy": 0.9895833333333334,
+      "cpu_p95_ms": 14.833750200034501,
+      "version": "f7c7851cf0cf-15f07dba3a47",
+      "source_run_id": "f7c7851cf0cf4ce7b4da68aef103f48d",
+      "mlflow_run_id": "bd647eab17a34b85ab0846b6610e26a1",
+      "checkpoint_sha256": "15f07dba3a47fcad092c769effa936ccf54760579aa515452620b6f50d4c35a1",
+      "params": {
+        "architecture": "efficientnet_b0",
+        "seed": 42,
+        "epochs": 4,
+        "image_size": 224,
+        "batch": 16,
+        "learning_rate": 0.001,
+        "device": "cuda",
+        "scratch": false,
+        "git_sha": "bf0629739ebb21e4fae84967758e3bda0cfe0c52",
+        "split_sha256": "385f4262fd111282ba94bec9b753347ef6a7c6aa53f817f745d2a7ea0369150e",
+        "sample_limit": 480,
+        "train_count": 2448,
+        "val_count": 432,
+        "test_count": 576
+      }
+    },
+    {
+      "bundle": "mobilenet_v3_small-571972ef",
+      "architecture": "mobilenet_v3_small",
+      "val_macro_f1": 0.9861709185470721,
+      "val_accuracy": 0.9861111111111112,
+      "test_macro_f1": 0.9673914391008126,
+      "test_accuracy": 0.9670138888888888,
+      "cpu_p95_ms": 2.8197111999475055,
+      "version": "571972ef502d-c4fb44708ce4",
+      "source_run_id": "571972ef502d4006943ad8fc7d495bfa",
+      "mlflow_run_id": "064224ec748346949926b49f3eed6225",
+      "checkpoint_sha256": "c4fb44708ce415d8a1fde7a77ba4e18cd4b65037dade455c1f6d28d9e3d1e475",
+      "params": {
+        "architecture": "mobilenet_v3_small",
+        "seed": 42,
+        "epochs": 4,
+        "image_size": 224,
+        "batch": 16,
+        "learning_rate": 0.001,
+        "device": "cuda",
+        "scratch": false,
+        "git_sha": "bf0629739ebb21e4fae84967758e3bda0cfe0c52",
+        "split_sha256": "385f4262fd111282ba94bec9b753347ef6a7c6aa53f817f745d2a7ea0369150e",
+        "sample_limit": 480,
+        "train_count": 2448,
+        "val_count": 432,
+        "test_count": 576
+      }
+    }
+  ],
+  "dataset": {
+    "source": "https://www.kaggle.com/datasets/sriramr/fruits-fresh-and-rotten-for-classification",
+    "conflicting_image_hashes_removed": 0,
+    "duplicate_copies_removed": 0
+  },
+  "execution_source": "https://www.kaggle.com/code/khalilayeb/plantguard-fruit-training (Kaggle version 2)"
+}

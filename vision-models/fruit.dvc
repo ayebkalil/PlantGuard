@@ -1,0 +1,6 @@
+outs:
+- md5: 1f99554b15714297fa1c7d8282011610.dir
+  size: 45407280
+  nfiles: 11
+  hash: md5
+  path: fruit

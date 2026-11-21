@@ -243,9 +243,11 @@ def train(args):
         manifest = {key: sorted((label, digest) for _, label, digest in values) for key, values in rows.items()}
 
     digest = split_hash(manifest)
+    if args.expected_split and digest != args.expected_split:
+        raise ValueError(f"Expected split {args.expected_split}, found {digest}")
     tracking = os.getenv("MLFLOW_TRACKING_URI") or f"sqlite:///{(out / 'mlflow.db').as_posix()}"
     mlflow.set_tracking_uri(tracking)
-    mlflow.set_experiment(f"plantguard-{args.task}")
+    mlflow.set_experiment(args.experiment or f"plantguard-{args.task}")
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
     candidates = []
     for model in args.models or ARCHS[args.task][:1]:
@@ -296,4 +298,6 @@ if __name__ == "__main__":
     parser.add_argument("--cpu", action="store_true")
     parser.add_argument("--scratch", action="store_true")
     parser.add_argument("--require-gpu", action="store_true")
+    parser.add_argument("--expected-split", help="require this split SHA-256 before training")
+    parser.add_argument("--experiment", help="MLflow experiment name")
     train(parser.parse_args())

@@ -384,13 +384,19 @@ def run_model_experiments(dataset_root=None, epochs=5, batch_size=32, learning_r
                           experiment_name: str = EXPERIMENT_NAME, rebuild_splits: bool = False,
                           image_size: int = IMG, freeze_epochs: int = 0, patience: int = 0,
                           amp: bool = False, seed: int = 42, prepared: bool = False,
-                          min_macro_f1: float = 0.0, max_latency_ms: float = float("inf")) -> dict:
+                          min_macro_f1: float = 0.0, max_latency_ms: float = float("inf"),
+                          expected_split: str | None = None) -> dict:
     model_names = list(model_names or DEFAULT_BENCHMARK_MODELS)
     out_dir = Path(output_dir) if output_dir else Path("models")
     out_dir.mkdir(parents=True, exist_ok=True)
 
     if rebuild_splits or not prepared:
         build_split_metadata(dataset_root, SPLITS_DIR, random_state=seed)
+    if expected_split:
+        root = Path(dataset_root) if dataset_root else DEFAULT_DATASET_ROOT
+        actual = _split_fingerprint(_load_splits(root, rebuild=False))
+        if actual != expected_split:
+            raise ValueError(f"Expected split {expected_split}, found {actual}")
     results = []
     for model_name in model_names:
         metadata = train_model(
@@ -473,6 +479,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--no-pretrained", action="store_true", help="train from random weights")
     parser.add_argument("--no-promote", action="store_true", help="do not copy the winner to models/plantguard_model.pt")
     parser.add_argument("--rebuild-splits", action="store_true", help="recompute data/processed/splits.json")
+    parser.add_argument("--expected-split", help="require this split SHA-256 before training")
     return parser.parse_args()
 
 
@@ -486,5 +493,6 @@ if __name__ == "__main__":
         promote=not args.no_promote, experiment_name=args.experiment,
         rebuild_splits=args.rebuild_splits, image_size=args.image_size,
         freeze_epochs=args.freeze_epochs, patience=args.patience, amp=args.amp,
+        expected_split=args.expected_split,
     )
     print(json.dumps(summary, indent=2))

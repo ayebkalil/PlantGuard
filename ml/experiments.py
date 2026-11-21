@@ -26,6 +26,14 @@ def run_candidate(recipe, output, dataset, tracking_uri, require_gpu):
 
     task, model = recipe["task"], recipe["model"]
     baseline, expected_split, primary = load_baseline(task)
+    previous = read_json(Path("reports/weeds-experiment.json"))
+    if previous["split_sha256"] != expected_split:
+        raise ValueError("Prior weed experiment used a different split")
+    baseline = {
+        **previous["candidate"],
+        **{key: values["candidate"] for key, values in previous["metrics"].items()},
+        "cpu_p95_ms": previous["latency_p95_ms_cpu"]["candidate"],
+    }
     baseline_id = baseline.get("mlflow_run_id") or baseline["run_id"]
     output.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()

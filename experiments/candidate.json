@@ -1,17 +1,17 @@
 {
   "task": "weeds",
-  "model": "unet32",
-  "experiment": "plantguard-weeds-experiment",
+  "model": "deeplabv3_mobilenet",
+  "experiment": "plantguard-weeds-deeplab-rgb",
   "seed": 42,
   "args": [
     "--epochs",
-    "42",
+    "32",
     "--size",
     "224",
     "--batch",
     "8",
     "--lr",
-    "0.0008",
+    "0.0003",
     "--cosine",
     "--paired-rotations"
   ]

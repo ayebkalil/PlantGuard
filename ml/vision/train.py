@@ -20,7 +20,7 @@ from ml.registry import save_json, sha256
 from ml.vision.artifacts import TASK_KINDS
 from ml.vision.data import fruit_rows, pest_data, split_classifier, split_hash, weed_data
 
-ARCHS = {"pests": ("yolov8n", "yolov8s"), "weeds": ("unet16", "unet32"),
+ARCHS = {"pests": ("yolov8n", "yolov8s"), "weeds": ("unet16", "unet32", "deeplabv3_mobilenet"),
          "fruit": ("efficientnet_b0", "mobilenet_v3_small")}
 
 
@@ -95,6 +95,31 @@ class UNet(nn.Module):
         return self.head(self.decode_left(torch.cat((self.up_left(middle_out), left), dim=1)))
 
 
+class DeepLabRGB(nn.Module):
+    """Expose the three-class logits expected by the existing ONNX service."""
+
+    def __init__(self, classes, pretrained):
+        super().__init__()
+        from torchvision.models import MobileNet_V3_Large_Weights
+        from torchvision.models.segmentation import deeplabv3_mobilenet_v3_large
+
+        self.model = deeplabv3_mobilenet_v3_large(
+            weights=None,
+            weights_backbone=MobileNet_V3_Large_Weights.DEFAULT if pretrained else None,
+            num_classes=classes,
+            aux_loss=False,
+        )
+
+    def forward(self, x):
+        return self.model(x)["out"]
+
+
+def build_segmentation_model(name, classes, pretrained):
+    if name == "deeplabv3_mobilenet":
+        return DeepLabRGB(classes, pretrained)
+    return UNet(int(name.removeprefix("unet")))
+
+
 def score(model, loader, device, labels, segment):
     count = len(labels)
     confusion = torch.zeros(count * count, dtype=torch.long, device=device)
@@ -121,7 +146,10 @@ def score(model, loader, device, labels, segment):
 def torch_train(args, model_name, labels, rows, directory, device, history):
     segment = args.task == "weeds"
     metric = "mean_iou" if segment else "macro_f1"
-    model = UNet(int(model_name.removeprefix("unet"))) if segment else build_model(len(labels), model_name, not args.scratch)
+    if segment:
+        model = build_segmentation_model(model_name, len(labels), not args.scratch)
+    else:
+        model = build_model(len(labels), model_name, not args.scratch)
     model.to(device)
     loaders = {name: DataLoader(Samples(records, args.size, segment, name == "train", args.paired_rotations),
                                 batch_size=args.batch, shuffle=name == "train",

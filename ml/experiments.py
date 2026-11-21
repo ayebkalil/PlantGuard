@@ -85,10 +85,12 @@ def run_candidate(recipe, output, dataset, tracking_uri, require_gpu):
     result.write_text(json.dumps(comparison, indent=2) + "\n", encoding="utf-8")
     client = mlflow.MlflowClient(tracking_uri)
     client.set_tag(candidate_id, "plantguard.baseline_run_id", baseline_id)
+    client.set_tag(candidate_id, "plantguard.candidate_version", version)
     client.set_tag(candidate_id, "plantguard.git_sha", comparison["git_sha"])
     client.set_tag(candidate_id, "plantguard.split_sha256", expected_split)
     for name, values in comparison["metrics"].items():
         client.log_metric(candidate_id, f"baseline_{name}", values["baseline"])
+        client.log_metric(candidate_id, f"candidate_{name}", values["candidate"])
         client.log_metric(candidate_id, f"delta_{name}", values["delta"])
     client.log_artifact(candidate_id, str(result))
     print(result)

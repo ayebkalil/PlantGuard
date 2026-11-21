@@ -1,0 +1,65 @@
+{
+  "task": "pests",
+  "experiment": "plantguard-pests-experiment",
+  "git_sha": "d73f41b34ac8fee8228eba46224b38ceb41f8c16",
+  "split_sha256": "387e226e0c5cd7a8576f6b2fee930b3e2bcc38824b472811a157821e0d55903e",
+  "primary_validation_metric": "val_map50_95",
+  "baseline": {
+    "architecture": "yolov8n",
+    "version": "d83d7a6629e9-3adf0daed287",
+    "checkpoint_sha256": "3adf0daed2874d474326af0e9466e769cd9440fb1873bc5f125e548e748f1144",
+    "mlflow_run_id": "ae41cf2fdb3949869f8d21a42fb719e3"
+  },
+  "candidate": {
+    "architecture": "yolov8s",
+    "version": "0d16b42c434f-91678915f1f2",
+    "checkpoint_sha256": "91678915f1f2b73d729d4af0078c317fecf73fae5f80c54ae61e6bfd646ba8f1",
+    "mlflow_run_id": "0d16b42c434f41639780806571b505ce"
+  },
+  "metrics": {
+    "test_map50": {
+      "baseline": 0.03657308968004092,
+      "candidate": 0.16544959270404794,
+      "delta": 0.12887650302400702
+    },
+    "test_map50_95": {
+      "baseline": 0.02121937729331077,
+      "candidate": 0.09425514430434527,
+      "delta": 0.07303576701103451
+    },
+    "test_precision": {
+      "baseline": 0.0294114869288146,
+      "candidate": 0.4054440975685279,
+      "delta": 0.37603261063971327
+    },
+    "test_recall": {
+      "baseline": 0.24156008151059913,
+      "candidate": 0.20027068319740465,
+      "delta": -0.041289398313194475
+    },
+    "val_map50": {
+      "baseline": 0.02099888589432344,
+      "candidate": 0.11781634937284864,
+      "delta": 0.0968174634785252
+    },
+    "val_map50_95": {
+      "baseline": 0.013811367695653472,
+      "candidate": 0.07207089353466091,
+      "delta": 0.05825952583900744
+    },
+    "val_precision": {
+      "baseline": 0.010782140822730876,
+      "candidate": 0.38987886525216986,
+      "delta": 0.379096724429439
+    },
+    "val_recall": {
+      "baseline": 0.21427863721484058,
+      "candidate": 0.1459536730639764,
+      "delta": -0.06832496415086417
+    }
+  },
+  "latency_p95_ms_cpu": {
+    "baseline": 38.64178620002576,
+    "candidate": 138.68105999863474
+  }
+}

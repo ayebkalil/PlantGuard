@@ -37,7 +37,12 @@ class Samples(Dataset):
             channels = []
             for path in source:
                 with Image.open(path) as channel:
-                    channels.append(channel.convert("L"))
+                    samples = np.asarray(channel)
+                    if samples.dtype == np.uint16:
+                        samples = np.rint(samples.astype(np.float32) / 257).astype(np.uint8)
+                    if samples.dtype != np.uint8 or samples.ndim != 2:
+                        raise ValueError(f"Expected an 8-bit or 16-bit grayscale band: {path}")
+                    channels.append(Image.fromarray(samples))
             image = Image.merge("RGB", channels)
             with Image.open(label) as mask:
                 pixels = np.asarray(mask.resize(self.size, Image.Resampling.NEAREST))
@@ -117,7 +122,7 @@ def torch_train(args, model_name, labels, rows, directory, device, history):
                                 generator=torch.Generator().manual_seed(args.seed))
                for name, records in rows.items()}
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
-    loss_fn = nn.CrossEntropyLoss(weight=torch.tensor([.6, 1., 2.], device=device) if segment else None)
+    loss_fn = nn.CrossEntropyLoss(weight=torch.tensor([.35, 1.5, 3.], device=device) if segment else None)
     best, validation = -1., {}
     checkpoint = directory / "weights.pt"
     for epoch in range(1, args.epochs + 1):
@@ -125,7 +130,17 @@ def torch_train(args, model_name, labels, rows, directory, device, history):
         total = 0.
         for image, truth in loaders["train"]:
             optimizer.zero_grad(set_to_none=True)
-            loss = loss_fn(model(image.to(device)), truth.to(device))
+            target = truth.to(device)
+            logits = model(image.to(device))
+            loss = loss_fn(logits, target)
+            if segment:
+                probabilities = logits.softmax(1)[:, 1:]
+                foreground = nn.functional.one_hot(target, num_classes=3).permute(0, 3, 1, 2)[:, 1:]
+                axes = (0, 2, 3)
+                dice = (2 * (probabilities * foreground).sum(axes) + 1) / (
+                    probabilities.sum(axes) + foreground.sum(axes) + 1
+                )
+                loss += 1 - dice.mean()
             loss.backward()
             optimizer.step()
             total += loss.item()
@@ -242,6 +257,7 @@ def train(args):
         torch.backends.cudnn.benchmark = False
         params = {"architecture": model, "seed": args.seed, "epochs": args.epochs, "image_size": args.size,
                   "batch": args.batch, "learning_rate": args.lr, "device": device, "scratch": args.scratch,
+                  "preprocessing": "rgb16-scale-dice" if args.task == "weeds" else "dataset-adapter-v1",
                   "git_sha": commit, "split_sha256": digest, "sample_limit": args.limit or 0,
                   **{f"{key}_count": len(value) for key, value in manifest.items()}}
         with mlflow.start_run(run_name=model) as run:

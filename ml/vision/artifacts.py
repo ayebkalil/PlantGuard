@@ -63,12 +63,16 @@ def install(directory, root, promote=False):
     task_root = root / meta["task"]
     path = task_root / "registry" / version
     path.mkdir(parents=True, exist_ok=True)
-    checkpoint = path / "model.onnx"
-    if not checkpoint.exists():
-        _copy_checkpoint(directory / "model.onnx", checkpoint)
-        _copy_checkpoint(directory / "weights.pt", path / "weights.pt")
-    if sha256(checkpoint) != meta["checkpoint_sha256"]:
-        raise ValueError("Installed checkpoint checksum mismatch")
+    for name, checksum in (("model.onnx", meta["checkpoint_sha256"]), ("weights.pt", meta["weights_sha256"])):
+        artifact = path / name
+        if not artifact.exists():
+            _copy_checkpoint(directory / name, artifact)
+        if sha256(artifact) != checksum:
+            raise ValueError(f"Installed {name} checksum mismatch")
+    for name in ("split.json", "confusion.json"):
+        source = directory / name
+        if source.exists() and not (path / name).exists():
+            _copy_checkpoint(source, path / name)
     run = import_mlflow(directory, meta)
     version_data = {key: value for key, value in meta.items() if key != "history"}
     version_data.update({"version": version, "mlflow_run_id": run,

@@ -1,6 +1,6 @@
 # Pest detection experiment
 
-Train YOLOv8s for up to 36 epochs at 512 pixels. Use AdamW and cosine decay, and taper mosaic augmentation in the last eight epochs. Compare validation and held-out mAP50–95 against the published YOLOv8n run.
+Train YOLOv8s for up to 20 epochs at 512 pixels. Use AdamW and cosine decay, and disable mosaic augmentation in the final five epochs. Compare validation and held-out mAP50–95 against the published YOLOv8n run.
 
 From this branch, set `MLFLOW_TRACKING_URI` to your team’s MLflow server to compare runs in one place. Otherwise the runner creates a tracking database in the output directory.
 

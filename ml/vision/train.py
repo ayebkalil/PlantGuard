@@ -169,18 +169,26 @@ def yolo_train(args, name, manifest, directory, device, history):
     settings.update({"mlflow": False})
     model = YOLO(f"{name}.yaml" if args.scratch else f"{name}.pt")
     schedule = {"optimizer": "AdamW", "lr0": args.lr, "cos_lr": True,
-                "close_mosaic": 8, "patience": 12} if args.cosine else {}
+                "close_mosaic": 5, "patience": 10} if args.cosine else {}
+
+    def log_epoch(trainer):
+        step = trainer.epoch + 1
+        if history and history[-1]["step"] >= step:
+            return
+        results = Path(trainer.save_dir) / "results.csv"
+        if not results.is_file():
+            return
+        with results.open(newline="") as file:
+            row = list(csv.DictReader(file))[-1]
+        metrics = {key.strip().replace("(", "_").replace(")", ""): float(value)
+                   for key, value in row.items() if key.strip() != "epoch" and value}
+        mlflow.log_metrics(metrics, step=step)
+        history.append({"step": step, "metrics": metrics})
+
+    model.add_callback("on_fit_epoch_end", log_epoch)
     model.train(data=str(manifest), epochs=args.epochs, imgsz=args.size, batch=args.batch,
                 seed=args.seed, deterministic=True, device=0 if device == "cuda" else "cpu",
                 project=str(directory.resolve()), name="yolo", workers=2, plots=True, **schedule)
-    results = Path(model.trainer.save_dir) / "results.csv"
-    if results.is_file():
-        with results.open(newline="") as file:
-            for i, row in enumerate(csv.DictReader(file), 1):
-                metrics = {key.strip().replace("(", "_").replace(")", ""): float(value)
-                           for key, value in row.items() if key.strip() != "epoch" and value}
-                mlflow.log_metrics(metrics, step=i)
-                history.append({"step": i, "metrics": metrics})
     best = YOLO(str(model.trainer.best))
     def rates(split):
         result = best.val(data=str(manifest), split=split, imgsz=args.size, batch=args.batch,
@@ -266,7 +274,7 @@ def train(args):
                   "git_sha": commit, "split_sha256": digest, "sample_limit": args.limit or 0,
                   **{f"{key}_count": len(value) for key, value in manifest.items()}}
         if args.cosine:
-            params.update(optimizer="AdamW", lr_schedule="cosine", close_mosaic=8, patience=12)
+            params.update(optimizer="AdamW", lr_schedule="cosine", close_mosaic=5, patience=10)
         with mlflow.start_run(run_name=model) as run:
             directory = out / f"{model}-{run.info.run_id[:8]}"
             directory.mkdir()

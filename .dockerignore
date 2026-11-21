@@ -10,6 +10,7 @@ archive
 archive*.zip
 data
 models
+vision-models
 mlruns
 mlartifacts
 reports

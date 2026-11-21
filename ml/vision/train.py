@@ -222,7 +222,8 @@ def train(args):
         manifest = {key: sorted((paths[0].name, digest) for paths, _, digest in values) for key, values in rows.items()}
     else:
         labels, records, provenance = classification_rows(args.task, args.data, work)
-        rows = split_classifier(records, labels, args.seed, args.limit)
+        rows, audit = split_classifier(records, labels, args.seed, args.limit)
+        provenance.update(audit)
         manifest = {key: sorted((label, digest) for _, label, digest in values) for key, values in rows.items()}
 
     digest = split_hash(manifest)

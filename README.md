@@ -68,3 +68,7 @@ See [the 18-criterion grading guide](reports/RUBRIC.md) and [benchmark metrics](
 - [Pinned author split lists and leaf map](https://huggingface.co/datasets/mohanty/PlantVillage/tree/afb5ce38128c7bac085b31d499d28b631ef8fc80)
 - [DVC pipelines](https://doc.dvc.org/user-guide/pipelines/defining-pipelines)
 - [GitHub Actions package publishing](https://docs.github.com/en/packages/managing-github-packages-using-github-actions-workflows/publishing-and-installing-a-package-with-github-actions)
+
+## Additional vision tools
+
+See the [Kaggle training and model registry guide](kaggle/README.md) for pest detection, maize-field weed segmentation, fruit freshness and banana ripeness.

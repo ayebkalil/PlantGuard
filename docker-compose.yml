@@ -5,6 +5,7 @@ services:
     environment:
       MODEL_PATH: /app/models/plantguard_model.pt
       MODEL_META_PATH: /app/models/model_metadata.json
+      VISION_MODEL_ROOT: /app/vision-models
       CONFIDENCE_THRESHOLD: ${CONFIDENCE_THRESHOLD:-0.6}
       MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-8388608}
       MAX_BATCH_FILES: ${MAX_BATCH_FILES:-8}
@@ -15,6 +16,10 @@ services:
       - type: bind
         source: ${PLANTGUARD_MODELS_DIR:-./models}
         target: /app/models
+        read_only: true
+      - type: bind
+        source: ${PLANTGUARD_VISION_MODELS_DIR:-./vision-models}
+        target: /app/vision-models
         read_only: true
     security_opt:
       - no-new-privileges:true

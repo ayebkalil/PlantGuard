@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import Beanstalk from './Beanstalk';
 import DiseaseTool from './DiseaseTool';
-import { Glyph, toolsList } from './Botany';
+import { toolsList } from './Botany';
+import VisionTool from './VisionTool';
+
+const routes = [...toolsList, { id: 'banana', title: 'Banana ripeness', icon: 'fruit' }];
 
 function selectedTool() {
-  return toolsList.find(item => item.id === location.hash.split('/').pop());
+  return routes.find(item => item.id === location.hash.split('/').pop());
 }
 
 export default function App() {
@@ -18,12 +21,6 @@ export default function App() {
   if (!tool) return <Beanstalk />;
   return <div className="world atlas"><main className="detail">
     <a className="back" href="#/">← PlantGuard</a>
-    {tool.id === 'disease' ? <DiseaseTool /> : <div className="pending">
-      <div><Glyph type={tool.icon}/><h1>{tool.title}</h1>
-        <p>{tool.id === 'fruit' ? 'Fresh or rotten fruit classification' : tool.title} will be available once the model is connected.</p>
-        <a href="#/disease">Open plant disease detection ↗</a>
-      </div>
-      <img alt="" src={'/botany/' + ({ fruit:'fruit', pests:'beetle', weeds:'weed' }[tool.id]) + '.webp'}/>
-    </div>}
+    {tool.id === 'disease' ? <DiseaseTool /> : <VisionTool key={tool.id} tool={tool} />}
   </main></div>;
 }

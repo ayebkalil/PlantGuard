@@ -11,11 +11,15 @@ class LimitInferenceBody:
         self.app = app
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] != "http" or scope["method"] != "POST" or scope["path"].rstrip("/") not in {"/predict", "/predict/batch"}:
+        if scope["type"] != "http" or scope["method"] != "POST":
+            await self.app(scope, receive, send)
+            return
+        path = scope["path"].rstrip("/")
+        if path not in {"/predict", "/predict/batch"} and not path.startswith("/vision/"):
             await self.app(scope, receive, send)
             return
 
-        count = MAX_BATCH_FILES if scope["path"].rstrip("/").endswith("/batch") else 1
+        count = MAX_BATCH_FILES if path == "/predict/batch" else 1
         limit = count * MAX_UPLOAD_BYTES + 128 * 1024  # multipart headers and framing
         length = dict(scope["headers"]).get(b"content-length")
         if length and length.isdigit() and int(length) > limit:

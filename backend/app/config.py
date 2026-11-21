@@ -4,6 +4,7 @@ import os
 ROOT_DIR = Path(__file__).resolve().parents[2]
 MODEL_PATH = Path(os.getenv("MODEL_PATH", ROOT_DIR / "models" / "plantguard_model.pt"))
 MODEL_META_PATH = Path(os.getenv("MODEL_META_PATH", ROOT_DIR / "models" / "model_metadata.json"))
+VISION_MODEL_ROOT = Path(os.getenv("VISION_MODEL_ROOT", ROOT_DIR / "vision-models"))
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000").split(",")
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.6"))
 MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(8 * 1024 * 1024)))

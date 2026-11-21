@@ -21,6 +21,17 @@ class InvalidImage(ValueError):
     pass
 
 
+def decode_image(content: bytes) -> Image.Image:
+    try:
+        with Image.open(io.BytesIO(content), formats=IMAGE_FORMATS) as source:
+            if source.width * source.height > MAX_PIXELS:
+                raise InvalidImage("Image exceeds the maximum pixel count.")
+            source.load()
+            return ImageOps.exif_transpose(source).convert("RGB")
+    except (OSError, Image.DecompressionBombError, SyntaxError) as exc:
+        raise InvalidImage("Upload a valid JPEG, PNG or BMP image.") from exc
+
+
 class ModelService:
     def __init__(self) -> None:
         self.model_path = Path(MODEL_PATH)
@@ -70,14 +81,7 @@ class ModelService:
 
     def predict(self, image_bytes: bytes) -> dict:
         start = time.perf_counter()
-        try:
-            with Image.open(io.BytesIO(image_bytes), formats=IMAGE_FORMATS) as source:
-                if source.width * source.height > MAX_PIXELS:
-                    raise InvalidImage("Image exceeds the maximum pixel count.")
-                source.load()
-                image = ImageOps.exif_transpose(source).convert("RGB")
-        except (OSError, Image.DecompressionBombError, SyntaxError) as exc:
-            raise InvalidImage("Upload a valid JPEG, PNG or BMP image.") from exc
+        image = decode_image(image_bytes)
 
         with self.lock:
             self.refresh_metadata()

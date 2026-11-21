@@ -30,6 +30,7 @@ def run_candidate(recipe, output, dataset, tracking_uri, require_gpu):
     output.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
     env["MLFLOW_TRACKING_URI"] = tracking_uri
+    env.setdefault("PYTHONIOENCODING", "utf-8")
     if require_gpu:
         import torch
 

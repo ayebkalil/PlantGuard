@@ -96,16 +96,17 @@ def split_classifier(rows, labels, seed, limit):
     # Prefer the official test split when exact duplicates cross its boundary.
     groups = defaultdict(list)
     seen = {}
+    conflicts = set()
     for path, label, split in rows:
         with Image.open(path) as image:
             rgb = image.convert("RGB")
             digest = sha256(str(rgb.size).encode() + rgb.tobytes()).hexdigest()
-        if digest in seen:
-            if seen[digest] != label:
-                raise ValueError(f"Conflicting labels for image {path.name}")
-            continue
-        seen[digest] = label
-        groups[label, split].append((path, label, digest))
+        if digest in seen and seen[digest][1] != label:
+            conflicts.add(digest)
+        seen.setdefault(digest, (path, label, split))
+    for digest, (path, label, split) in seen.items():
+        if digest not in conflicts:
+            groups[label, split].append((path, label, digest))
     rng = random.Random(seed)
     splits = {name: [] for name in ("train", "val", "test")}
     for i, label in enumerate(labels):
@@ -124,7 +125,10 @@ def split_classifier(rows, labels, seed, limit):
         splits["test"].extend(official)
         splits["val"].extend(pool[:val_count])
         splits["train"].extend(pool[val_count:])
-    return splits
+    return splits, {
+        "conflicting_image_hashes_removed": len(conflicts),
+        "duplicate_copies_removed": len(rows) - len(seen),
+    }
 
 
 def weed_data(source, work, limit):
@@ -169,7 +173,7 @@ def download_ip102(work):
 
 
 def voc_boxes(path, classes, width, height):
-    root = ET.parse(path).getroot()
+    root = read_voc(path)
     rows = []
     for obj in root.findall("object"):
         label = obj.findtext("name", "").strip()
@@ -185,6 +189,16 @@ def voc_boxes(path, classes, width, height):
         values = ((x1+x2)/(2*width), (y1+y2)/(2*height), (x2-x1)/width, (y2-y1)/height)
         rows.append(f"{classes[label]} " + " ".join(f"{value:.8f}" for value in values))
     return rows
+
+
+def read_voc(path):
+    # Some official IP102 files have extra bytes after the first VOC document.
+    data = path.read_bytes()
+    marker = b"</annotation>"
+    end = data.find(marker)
+    if end >= 0:
+        data = data[:end + len(marker)]
+    return ET.fromstring(data)
 
 
 def pest_data(source, work, seed, limit):
@@ -207,8 +221,15 @@ def pest_data(source, work, seed, limit):
     if missing:
         raise ValueError(f"Official IP102 detection subset incomplete ({len(missing)} missing image/XML pairs)")
     # Annotation names are the detection taxonomy, independent of the classification labels file.
-    labels = sorted({name.text.strip() for key in fit + test
-                     for name in ET.parse(annotations[key]).getroot().findall("object/name")})
+    invalid_xml = set()
+    observed = set()
+    for key in fit + test:
+        try:
+            names = read_voc(annotations[key]).findall("object/name")
+            observed.update(name.text.strip() for name in names if name.text and name.text.strip())
+        except ET.ParseError:
+            invalid_xml.add(key)
+    labels = sorted(observed)
     if not labels:
         raise ValueError("The IP102 input contains no bounding box labels")
     indices = dict(zip(labels, range(len(labels))))
@@ -220,7 +241,7 @@ def pest_data(source, work, seed, limit):
         picture_dir.mkdir(parents=True, exist_ok=True)
         label_dir.mkdir(parents=True, exist_ok=True)
         digests[split] = []
-        for key in names[:limit]:
+        for key in [key for key in names if key not in invalid_xml][:limit]:
             img = images[key]
             image_sha = file_hash(img)
             if image_sha in image_splits and image_splits[image_sha] != split:
@@ -240,7 +261,7 @@ def pest_data(source, work, seed, limit):
     manifest.write_text(yaml.safe_dump({"path": str(destination.resolve()), "train": "images/train",
                                        "val": "images/val", "test": "images/test", "names": labels}))
     return labels, manifest, digests, {"source": "https://github.com/xpwu95/IP102", "release": "v1.1 VOC2007",
-                                      "official_test": True}
+                                      "official_test": True, "invalid_annotations_omitted": len(invalid_xml)}
 
 
 def split_hash(splits):

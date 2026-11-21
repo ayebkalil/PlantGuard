@@ -1,0 +1,6 @@
+# Kaggle supplies CUDA-enabled torch and torchvision.
+mlflow==3.16.1
+onnx==1.20.1
+onnxruntime==1.24.4
+gdown==5.2.0
+ultralytics==8.4.32

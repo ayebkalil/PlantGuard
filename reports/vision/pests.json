@@ -1,0 +1,50 @@
+{
+  "task": "pests",
+  "validation_metric": "map50_95",
+  "winner": "yolov8n-d83d7a66",
+  "split_sha256": "387e226e0c5cd7a8576f6b2fee930b3e2bcc38824b472811a157821e0d55903e",
+  "runs": [
+    {
+      "bundle": "yolov8n-d83d7a66",
+      "architecture": "yolov8n",
+      "val_map50_95": 0.013811367695653472,
+      "val_map50": 0.02099888589432344,
+      "val_precision": 0.010782140822730876,
+      "val_recall": 0.21427863721484058,
+      "test_map50_95": 0.02121937729331077,
+      "test_map50": 0.03657308968004092,
+      "test_precision": 0.0294114869288146,
+      "test_recall": 0.24156008151059913,
+      "cpu_p95_ms": 38.64178620002576,
+      "version": "d83d7a6629e9-3adf0daed287",
+      "source_run_id": "d83d7a6629e946339cabdda00ca26df7",
+      "mlflow_run_id": "ae41cf2fdb3949869f8d21a42fb719e3",
+      "checkpoint_sha256": "3adf0daed2874d474326af0e9466e769cd9440fb1873bc5f125e548e748f1144",
+      "params": {
+        "architecture": "yolov8n",
+        "seed": 42,
+        "epochs": 5,
+        "image_size": 416,
+        "batch": 16,
+        "learning_rate": 0.001,
+        "device": "cuda",
+        "scratch": false,
+        "git_sha": "ca33c0f1f5bbb901370c11ab93dd3069acf85e80",
+        "split_sha256": "387e226e0c5cd7a8576f6b2fee930b3e2bcc38824b472811a157821e0d55903e",
+        "sample_limit": 1000,
+        "train_count": 1000,
+        "val_count": 1000,
+        "test_count": 1000
+      }
+    }
+  ],
+  "notes": "YOLOv8n completed and exported before the Ultralytics MLflow callback interrupted the second candidate.",
+  "dataset": {
+    "source": "https://github.com/xpwu95/IP102",
+    "release": "v1.1 VOC2007",
+    "official_test": true,
+    "invalid_annotations_omitted": 0,
+    "label_taxonomy": "https://raw.githubusercontent.com/xpwu95/IP102/924dda98fbb8d012f5f86276c22e6d5a4f2b6196/classes.txt"
+  },
+  "execution_source": "https://www.kaggle.com/code/khalilayeb/plantguard-pests-training (Kaggle version 2)"
+}

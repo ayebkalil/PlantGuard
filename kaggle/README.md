@@ -37,3 +37,7 @@ Import each run directory to compare candidates side by side. Pass `--promote` f
 The task directories under `vision-models/` are the DVC versioning units. Use `dvc add vision-models/fruit` and commit the resulting `vision-models/fruit.dvc` pointer. Configure an access-controlled DVC remote and use `dvc push vision-models/fruit.dvc` and `dvc pull vision-models/fruit.dvc` to transfer the model files. The Compose backend mounts `vision-models/` read-only.
 
 IP102 is available for academic use. The fruit Kaggle dataset’s metadata lists its license as unknown. WeedsGalore and the AgML BananaImageBD release identify CC BY 4.0. Keep restricted artifacts in your private Kaggle outputs or private DVC storage. See the source links for attribution details.
+
+## Measured results
+
+The [versioned benchmark reports](../reports/vision) record the selected run, held-out metrics, exact split digest and MLflow run IDs. The current pest checkpoint is an early YOLOv8n baseline. Its low held-out mAP limits field use. Scores in each report apply to that task and its listed sample size.

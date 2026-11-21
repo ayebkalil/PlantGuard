@@ -1,0 +1,6 @@
+outs:
+- md5: 52acf169afe8b866a31e39a5a75f25c0.dir
+  size: 20757010
+  nfiles: 5
+  hash: md5
+  path: pests

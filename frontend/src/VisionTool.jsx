@@ -42,6 +42,7 @@ export default function VisionTool({ tool }) {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState('');
   const [availability, setAvailability] = useState('checking');
+  const [pestBenchmark, setPestBenchmark] = useState(null);
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -54,7 +55,10 @@ export default function VisionTool({ tool }) {
         if (!response.ok) throw new Error('Connection failed');
         return response.json();
       })
-      .then((model) => setAvailability(model.status))
+      .then((model) => {
+        setAvailability(model.status);
+        setPestBenchmark(model.test_map50_95 ?? null);
+      })
       .catch((err) => { if (err.name !== 'AbortError') setAvailability('offline'); });
     return () => { controller.abort(); request.current?.abort(); };
   }, [endpoint]);
@@ -122,6 +126,9 @@ export default function VisionTool({ tool }) {
     </header>
     <section className="tool-panel" aria-label={tool.title}>
       {availability !== 'ready' && <p className="vision-notice" role="status">{messages[availability]}</p>}
+      {pestBenchmark !== null && pestBenchmark < .10 && <p className="vision-notice">
+        The current pest model scored {percent(pestBenchmark)} mAP50–95 on held-out images. It can miss pests and mislabel detections.
+      </p>}
       <input ref={input} type="file" accept=".jpg,.jpeg,.png,.bmp" hidden onChange={(event) => {
         choose(event.target.files[0]);
         event.target.value = '';

@@ -83,7 +83,8 @@ def metrics():
 def vision_info(task: Task):
     try:
         _, info = vision.load(task)
-        return {"status": "ready", "model_version": info["version"], "labels": info["labels"]}
+        return {"status": "ready", "model_version": info["version"], "labels": info["labels"],
+                "test_map50_95": info.get("metrics", {}).get("test_map50_95")}
     except FileNotFoundError:
         return {"status": "training_required"}
     except Exception:

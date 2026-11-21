@@ -186,13 +186,14 @@ def yolo_train(args, name, manifest, directory, device, history):
         history.append({"step": step, "metrics": metrics})
 
     model.add_callback("on_fit_epoch_end", log_epoch)
+    workers = 0 if os.name == "nt" else 2
     model.train(data=str(manifest), epochs=args.epochs, imgsz=args.size, batch=args.batch,
                 seed=args.seed, deterministic=True, device=0 if device == "cuda" else "cpu",
-                project=str(directory.resolve()), name="yolo", workers=2, plots=True, **schedule)
+                project=str(directory.resolve()), name="yolo", workers=workers, plots=True, **schedule)
     best = YOLO(str(model.trainer.best))
     def rates(split):
         result = best.val(data=str(manifest), split=split, imgsz=args.size, batch=args.batch,
-                          device=0 if device == "cuda" else "cpu", plots=True,
+                          device=0 if device == "cuda" else "cpu", workers=workers, plots=True,
                           project=str(directory.resolve()), name=split)
         return {"map50_95": float(result.box.map), "map50": float(result.box.map50),
                 "precision": float(result.box.mp), "recall": float(result.box.mr)}

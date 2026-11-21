@@ -1,0 +1,45 @@
+{
+  "task": "fruit",
+  "experiment": "plantguard-fruit-experiment",
+  "git_sha": "46de01bfb091b209838c0e03425fa347c61c239a",
+  "split_sha256": "385f4262fd111282ba94bec9b753347ef6a7c6aa53f817f745d2a7ea0369150e",
+  "primary_validation_metric": "val_macro_f1",
+  "baseline": {
+    "architecture": "efficientnet_b0",
+    "version": "f7c7851cf0cf-15f07dba3a47",
+    "checkpoint_sha256": "15f07dba3a47fcad092c769effa936ccf54760579aa515452620b6f50d4c35a1",
+    "mlflow_run_id": "bd647eab17a34b85ab0846b6610e26a1"
+  },
+  "candidate": {
+    "architecture": "efficientnet_b0",
+    "version": "519cbc5ef980-fb3fec23a7a4",
+    "checkpoint_sha256": "fb3fec23a7a46661ac36679e00d0a1b4ab57a370b9e2681b7fc70f524e0097c1",
+    "mlflow_run_id": "519cbc5ef980437cba8434f4465cc586"
+  },
+  "metrics": {
+    "test_accuracy": {
+      "baseline": 0.9895833333333334,
+      "candidate": 0.9965277777777778,
+      "delta": 0.00694444444444442
+    },
+    "test_macro_f1": {
+      "baseline": 0.989581048475543,
+      "candidate": 0.9965274009766686,
+      "delta": 0.00694635250112563
+    },
+    "val_accuracy": {
+      "baseline": 0.9953703703703703,
+      "candidate": 0.9976851851851852,
+      "delta": 0.0023148148148148806
+    },
+    "val_macro_f1": {
+      "baseline": 0.9953702587323278,
+      "candidate": 0.9976850735471426,
+      "delta": 0.0023148148148148806
+    }
+  },
+  "latency_p95_ms_cpu": {
+    "baseline": 14.833750200034501,
+    "candidate": 14.039250001951586
+  }
+}

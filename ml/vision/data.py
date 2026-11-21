@@ -28,8 +28,7 @@ IP_FILES = {
     "test.txt": "1E7qMewUPvcoKT_T9n7OnOZxX9D9yL38Q",
     "trainval.txt": "1MR85vLr5NKntY1oP8dMD5XCS8me0c4Ux",
 }
-FRUIT_NAMES = {f"{state}{fruit}s": f"{state} {fruit}" for state in ("fresh", "rotten")
-               for fruit in ("apple", "banana", "orange")}
+FRUIT_NAMES = [f"{state} {fruit}" for state in ("fresh", "rotten") for fruit in ("apple", "banana", "orange")]
 
 
 def download(url, path):
@@ -61,7 +60,7 @@ def image_files(directory):
     return sorted(p for p in directory.rglob("*") if p.is_file() and p.suffix.lower() in VALID_EXTENSIONS)
 
 
-def classification_rows(task, source, work):
+def classification_rows(task, source, work, limit=None, seed=42):
     if task == "banana":
         import pyarrow.parquet as pq
 
@@ -77,17 +76,26 @@ def classification_rows(task, source, work):
             rows.append((path, int(record["label"]), "pool"))
         return labels, rows, {"source": BANANA, "revision": BANANA_REV, "archive_sha256": file_hash(parquet)}
 
-    if source is None:
-        sources = sorted(Path("/kaggle/input").rglob("freshapples"))
-        root = next((p.parent.parent for p in sources if p.parent.name == "train"), None)
-    else:
-        root = next((p.parent.parent for p in source.rglob("freshapples") if p.parent.name == "train"), None)
+    input_root = source or Path("/kaggle/input")
+    root = next((p.parent for p in sorted(input_root.rglob("train")) if (p / "freshapples").is_dir()), None)
     if root is None or not (root / "test").is_dir():
         raise ValueError("Attach the fresh/rotten Kaggle dataset containing train and test folders.")
-    keys = sorted(FRUIT_NAMES)
-    rows = [(p, i, split) for split in ("test", "train") for i, name in enumerate(keys)
-            for p in image_files(root / split / name)]
-    return [FRUIT_NAMES[name] for name in keys], rows, {
+    rows = []
+    rng = random.Random(seed)
+    for split in ("test", "train"):
+        directories = {path.name.casefold().rstrip("s"): path for path in (root / split).iterdir() if path.is_dir()}
+        for label, name in enumerate(FRUIT_NAMES):
+            directory = directories.get(name.replace(" ", ""))
+            if directory is None:
+                raise ValueError(f"Fruit archive is missing {name} in {split}. Found: {sorted(directories)}")
+            images = image_files(directory)
+            if not images:
+                raise ValueError(f"No fruit images found in {directory}")
+            count = max(3, limit // 5) if limit and split == "test" else limit
+            if count and len(images) > count:
+                images = rng.sample(images, count)
+            rows.extend((path, label, split) for path in images)
+    return FRUIT_NAMES, rows, {
         "source": "https://www.kaggle.com/datasets/sriramr/fruits-fresh-and-rotten-for-classification",
     }
 

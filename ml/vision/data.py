@@ -1,7 +1,6 @@
-"""Dataset adapters for the four PlantGuard vision tasks."""
+"""Dataset adapters for pest detection, weed segmentation, and fruit freshness."""
 from collections import defaultdict
 from hashlib import sha256
-from io import BytesIO
 import json
 from pathlib import Path
 import random
@@ -11,14 +10,11 @@ from urllib.request import urlretrieve
 import xml.etree.ElementTree as ET
 import zipfile
 
-import numpy as np
 from PIL import Image
 
 from ml.preprocessing.preprocess import VALID_EXTENSIONS
 from ml.registry import sha256 as file_hash
 
-BANANA_REV = "1d10118219d0366851c26e35787e21a31a59fbdb"
-BANANA = f"https://huggingface.co/datasets/Project-AgML/BananaImageBD_ripeness_classification/resolve/{BANANA_REV}/raw/train-00000-of-00001.parquet"
 WEEDS = "https://doidata.gfz.de/weedsgalore_e_celikkan_2024/weedsgalore-dataset.zip"
 WEEDS_REV = "0ddf3a77bce282daf9d795de6f6c3d98e7fc9dcc"
 WEEDS_SPLITS = f"https://raw.githubusercontent.com/GFZ/weedsgalore/{WEEDS_REV}/src/datasets/weedsgalore/splits"
@@ -61,22 +57,7 @@ def image_files(directory):
     return sorted(p for p in directory.rglob("*") if p.is_file() and p.suffix.lower() in VALID_EXTENSIONS)
 
 
-def classification_rows(task, source, work, limit=None, seed=42):
-    if task == "banana":
-        import pyarrow.parquet as pq
-
-        parquet = source or download(BANANA, work / "banana.parquet")
-        labels = ["Green", "Overripe", "Ripe", "Semi-ripe"]
-        dest = work / "banana"
-        dest.mkdir(exist_ok=True)
-        rows = []
-        for i, record in enumerate(pq.read_table(parquet, columns=["image", "label"]).to_pylist()):
-            path = dest / f"{i:04}.png"
-            with Image.open(BytesIO(record["image"]["bytes"])) as img:
-                img.convert("RGB").save(path)
-            rows.append((path, int(record["label"]), "pool"))
-        return labels, rows, {"source": BANANA, "revision": BANANA_REV, "archive_sha256": file_hash(parquet)}
-
+def fruit_rows(source, limit=None, seed=42):
     input_root = source or Path("/kaggle/input")
     root = next((p.parent for p in sorted(input_root.rglob("train")) if (p / "freshapples").is_dir()), None)
     if root is None or not (root / "test").is_dir():

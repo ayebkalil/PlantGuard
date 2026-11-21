@@ -71,4 +71,4 @@ See [the 18-criterion grading guide](reports/RUBRIC.md) and [benchmark metrics](
 
 ## Additional vision tools
 
-See the [Kaggle training and model registry guide](kaggle/README.md) for pest detection, maize-field weed segmentation, fruit freshness and banana ripeness.
+See the [Kaggle training and model registry guide](kaggle/README.md) for plant disease detection, pest detection, maize-field weed segmentation, and fruit freshness.

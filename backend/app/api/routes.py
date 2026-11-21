@@ -14,7 +14,7 @@ from backend.app.services.vision import VisionService
 router = APIRouter()
 service = ModelService()
 vision = VisionService(VISION_MODEL_ROOT)
-Task = Literal["pests", "weeds", "fruit", "banana"]
+Task = Literal["pests", "weeds", "fruit"]
 log = logging.getLogger(__name__)
 vision_requests = Counter("plantguard_vision_requests", "Vision requests by task", ["task", "status"],
                           registry=service.monitor.registry)

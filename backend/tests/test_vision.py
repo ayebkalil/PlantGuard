@@ -66,7 +66,7 @@ def test_weed_training_preserves_high_bit_depth_band_contrast(tmp_path):
     assert target.tolist() == [[0, 1], [2, 2]]
 
 
-@pytest.mark.parametrize("task", ("banana", "fruit", "pests", "weeds"))
+@pytest.mark.parametrize("task", ("fruit", "pests", "weeds"))
 def test_missing_model_and_invalid_upload(task, tmp_path, monkeypatch):
     monkeypatch.setattr(routes, "vision", VisionService(tmp_path))
     with TestClient(app) as client:
@@ -76,6 +76,11 @@ def test_missing_model_and_invalid_upload(task, tmp_path, monkeypatch):
         image = io.BytesIO()
         Image.new("RGB", (16, 16), "green").save(image, "PNG")
         assert client.post(endpoint, files={"file": ("x.png", image.getvalue(), "image/png")}).status_code == 503
+
+
+def test_retired_vision_task_is_rejected():
+    with TestClient(app) as client:
+        assert client.get("/vision/banana").status_code == 422
 
 
 def test_invalid_model_pointer_cannot_load_external_file(tmp_path):

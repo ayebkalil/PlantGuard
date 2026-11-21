@@ -8,7 +8,7 @@ import re
 
 from ml.registry import _copy_checkpoint, save_json, sha256
 
-TASK_KINDS = {"pests": "detection", "weeds": "segmentation", "fruit": "classification", "banana": "classification"}
+TASK_KINDS = {"pests": "detection", "weeds": "segmentation", "fruit": "classification"}
 SELECTION = {"detection": "val_map50_95", "segmentation": "val_mean_iou", "classification": "val_macro_f1"}
 
 

@@ -17,11 +17,11 @@ from torch.utils.data import DataLoader, Dataset
 
 from ml.model import build_model, MEAN, STD
 from ml.registry import save_json, sha256
-from ml.vision.data import classification_rows, pest_data, split_classifier, split_hash, weed_data
+from ml.vision.artifacts import TASK_KINDS
+from ml.vision.data import fruit_rows, pest_data, split_classifier, split_hash, weed_data
 
-KINDS = {"pests": "detection", "weeds": "segmentation", "fruit": "classification", "banana": "classification"}
 ARCHS = {"pests": ("yolov8n", "yolov8s"), "weeds": ("unet16", "unet32"),
-         "fruit": ("efficientnet_b0", "mobilenet_v3_small"), "banana": ("efficientnet_b0", "mobilenet_v3_small")}
+         "fruit": ("efficientnet_b0", "mobilenet_v3_small")}
 
 
 class Samples(Dataset):
@@ -209,7 +209,7 @@ def publish_metadata(args, directory, labels, metrics, digest, provenance, run_i
         session.run(None, inputs)
         timings.append((perf_counter() - start) * 1000)
     metrics["cpu_p95_ms"] = float(np.percentile(timings, 95))
-    meta = {"task": args.task, "kind": KINDS[args.task], "labels": labels, "image_size": args.size,
+    meta = {"task": args.task, "kind": TASK_KINDS[args.task], "labels": labels, "image_size": args.size,
             "split_sha256": digest, "dataset": provenance, "metrics": metrics, "params": params,
             "source_run_id": run_id, "history": history, "checkpoint_sha256": sha256(onnx),
             "weights_sha256": sha256(directory / "weights.pt")}
@@ -237,7 +237,7 @@ def train(args):
         labels, rows, provenance = weed_data(args.data, work, args.limit)
         manifest = {key: sorted((paths[0].name, digest) for paths, _, digest in values) for key, values in rows.items()}
     else:
-        labels, records, provenance = classification_rows(args.task, args.data, work, args.limit, args.seed)
+        labels, records, provenance = fruit_rows(args.data, args.limit, args.seed)
         rows, audit = split_classifier(records, labels, args.seed, args.limit)
         provenance.update(audit)
         manifest = {key: sorted((label, digest) for _, label, digest in values) for key, values in rows.items()}
@@ -282,7 +282,7 @@ def train(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("task", choices=KINDS)
+    parser.add_argument("task", choices=TASK_KINDS)
     parser.add_argument("--models", nargs="+")
     parser.add_argument("--data", type=Path)
     parser.add_argument("--output", type=Path, required=True)

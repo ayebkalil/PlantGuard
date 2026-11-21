@@ -4,16 +4,20 @@ import DiseaseTool from './DiseaseTool';
 import { toolsList } from './Botany';
 import VisionTool from './VisionTool';
 
-const routes = [...toolsList, { id: 'banana', title: 'Banana ripeness', icon: 'fruit' }];
-
 function selectedTool() {
-  return routes.find(item => item.id === location.hash.split('/').pop());
+  const id = location.hash.split('/').pop();
+  return toolsList.find(item => item.id === (id === 'banana' ? 'disease' : id));
 }
 
 export default function App() {
   const [tool, setTool] = useState(selectedTool);
   useEffect(() => {
-    const navigate = () => { setTool(selectedTool()); window.scrollTo(0, 0); };
+    const navigate = () => {
+      if (location.hash === '#/banana') history.replaceState(history.state, '', '#/disease');
+      setTool(selectedTool());
+      window.scrollTo(0, 0);
+    };
+    navigate();
     window.addEventListener('hashchange', navigate);
     return () => window.removeEventListener('hashchange', navigate);
   }, []);

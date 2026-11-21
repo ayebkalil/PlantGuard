@@ -7,7 +7,6 @@ const TASKS = {
   pests: { description: 'Upload a close-up of a suspected insect. PlantGuard marks each detected pest on the image.', action: 'Detect pests' },
   weeds: { description: 'Upload a downward-facing RGB image of a maize field to map crop and weed coverage.', action: 'Map vegetation' },
   fruit: { description: 'Upload a photo of an apple, banana, or orange to classify its visible condition as fresh or rotten.', action: 'Check freshness' },
-  banana: { description: 'Upload a photo of a banana to estimate its stage from green to overripe.', action: 'Check ripeness' },
 };
 
 function Results({ result }) {
@@ -119,10 +118,6 @@ export default function VisionTool({ tool }) {
     <header className="tool-intro">
       <h1>{tool.title}</h1>
       <p>{details.description}</p>
-      {['fruit', 'banana'].includes(tool.id) && <nav className="vision-tabs" aria-label="Fruit analysis">
-        <a href="#/fruit" aria-current={tool.id === 'fruit' ? 'page' : undefined}>Freshness</a>
-        <a href="#/banana" aria-current={tool.id === 'banana' ? 'page' : undefined}>Banana ripeness</a>
-      </nav>}
     </header>
     <section className="tool-panel" aria-label={tool.title}>
       {availability !== 'ready' && <p className="vision-notice" role="status">{messages[availability]}</p>}

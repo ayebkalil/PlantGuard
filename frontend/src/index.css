@@ -67,7 +67,6 @@ background-image:radial-gradient(ellipse at 48% 44%,#c7db8220,transparent 61%),r
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:0s!important}}
 
 .vision-layout > * {min-width:0}
-.vision-tabs {display:inline-flex;margin-top:18px}
 .vision-glyph {width:28px;color:var(--accent)}
 .vision-notice {font-size:14px;margin:0 0 16px}
 .vision-photo {position:relative;isolation:isolate;width:fit-content;margin:auto;background:var(--bg)}

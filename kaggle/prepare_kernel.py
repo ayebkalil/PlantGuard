@@ -6,7 +6,7 @@ import re
 import subprocess
 
 MODELS = {
-    "banana": ["efficientnet_b0", "mobilenet_v3_small"],
+    "disease": ["simple_cnn", "mobilenet_v3_small"],
     "fruit": ["efficientnet_b0", "mobilenet_v3_small"],
     "weeds": ["unet16", "unet32"],
     "pests": ["yolov8n", "yolov8s"],
@@ -15,7 +15,7 @@ DATASETS = {
     "fruit": ["sriramr/fruits-fresh-and-rotten-for-classification"],
     "pests": [],
     "weeds": [],
-    "banana": [],
+    "disease": [],
 }
 
 
@@ -38,6 +38,12 @@ def generate(task, username, root, commit, epochs, limit, dataset=None, one_mode
             "--batch", "16", "--epochs", str(epochs), "--models", *(MODELS[task][:1] if one_model else MODELS[task])]
     if limit:
         args.extend(["--limit", str(limit)])
+    if task == "disease":
+        args = ["-m", "ml.training.train", "--epochs", str(epochs), "--batch-size", "16",
+                "--image-size", "128", "--lr", "0.001", "--num-workers", "0", "--models",
+                *(MODELS[task][:1] if one_model else MODELS[task])]
+        if limit:
+            args.extend(["--max-samples-per-class", str(limit)])
     script = f"""import os
 from pathlib import Path
 import subprocess
@@ -52,15 +58,33 @@ subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', '-r', 'kaggle/requ
 env = os.environ.copy()
 env['MLFLOW_DISABLE_AGENT_HINT'] = '1'
 args = {args!r}
+run_dir = repo
 """
-    if dataset and task in ("pests", "weeds"):
+    if dataset:
         script += f"""
 input_root = Path('/kaggle/input')
 # Derive the attachment folder from the Kaggle dataset slug.
 source = next(input_root.rglob({dataset.rsplit('/', 1)[-1]!r}))
-args.extend(['--data', str(source)])
 """
-    script += "\nsubprocess.run([sys.executable, '-u', *args], cwd=repo, env=env, check=True)\n"
+    if dataset and task in ("pests", "weeds"):
+        script += "args.extend(['--data', str(source)])\n"
+    if task == "disease":
+        if not dataset:
+            script += """
+subprocess.run([sys.executable, '-m', 'ml.data.fetch_plantvillage'], cwd=repo, check=True)
+source = repo / 'data/raw/plantvillage'
+"""
+        script += """
+import torch
+
+if not torch.cuda.is_available():
+    raise RuntimeError('A Kaggle GPU must be selected for this run.')
+run_dir = Path('/kaggle/working/disease')
+run_dir.mkdir(parents=True, exist_ok=True)
+env['PYTHONPATH'] = str(repo)
+args.extend(['--dataset-root', str(source)])
+"""
+    script += "\nsubprocess.run([sys.executable, '-u', *args], cwd=run_dir, env=env, check=True)\n"
     (target / "train.py").write_text(script, encoding="utf-8")
     print(target)
 

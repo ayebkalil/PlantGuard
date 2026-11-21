@@ -1,0 +1,18 @@
+{
+  "task": "weeds",
+  "model": "unet32",
+  "experiment": "plantguard-weeds-experiment",
+  "seed": 42,
+  "args": [
+    "--epochs",
+    "42",
+    "--size",
+    "224",
+    "--batch",
+    "8",
+    "--lr",
+    "0.0008",
+    "--cosine",
+    "--paired-rotations"
+  ]
+}

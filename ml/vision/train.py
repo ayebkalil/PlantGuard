@@ -25,8 +25,9 @@ ARCHS = {"pests": ("yolov8n", "yolov8s"), "weeds": ("unet16", "unet32"),
 
 
 class Samples(Dataset):
-    def __init__(self, rows, size, segment, train):
+    def __init__(self, rows, size, segment, train, paired_rotations=False):
         self.rows, self.size, self.segment, self.train = rows, (size, size), segment, train
+        self.paired_rotations = paired_rotations and train and segment
 
     def __len__(self):
         return len(self.rows)
@@ -57,6 +58,11 @@ class Samples(Dataset):
             arr = arr[:, ::-1]
             if self.segment:
                 label = label[:, ::-1].copy()
+        if self.paired_rotations:
+            turns = random.randrange(4)
+            arr = np.rot90(arr, turns)
+            label = np.rot90(label, turns).copy()
+            arr = np.clip(arr * random.uniform(.88, 1.12), 0., 1.)
         arr = ((arr - np.array(MEAN, dtype=np.float32)) / np.array(STD, dtype=np.float32)).transpose(2, 0, 1)
         return torch.from_numpy(arr), label
 
@@ -117,12 +123,13 @@ def torch_train(args, model_name, labels, rows, directory, device, history):
     metric = "mean_iou" if segment else "macro_f1"
     model = UNet(int(model_name.removeprefix("unet"))) if segment else build_model(len(labels), model_name, not args.scratch)
     model.to(device)
-    loaders = {name: DataLoader(Samples(records, args.size, segment, name == "train"),
+    loaders = {name: DataLoader(Samples(records, args.size, segment, name == "train", args.paired_rotations),
                                 batch_size=args.batch, shuffle=name == "train",
                                 generator=torch.Generator().manual_seed(args.seed))
                for name, records in rows.items()}
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
     loss_fn = nn.CrossEntropyLoss(weight=torch.tensor([.35, 1.5, 3.], device=device) if segment else None)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.epochs) if args.cosine else None
     best, validation = -1., {}
     checkpoint = directory / "weights.pt"
     for epoch in range(1, args.epochs + 1):
@@ -146,6 +153,7 @@ def torch_train(args, model_name, labels, rows, directory, device, history):
             total += loss.item()
         validation_scores, _ = score(model, loaders["val"], device, labels, segment)
         entry = {"train_loss": total / len(loaders["train"]),
+                 "learning_rate": optimizer.param_groups[0]["lr"],
                  **{f"val_{key}": value for key, value in validation_scores.items()}}
         mlflow.log_metrics(entry, step=epoch)
         history.append({"step": epoch, "metrics": entry})
@@ -153,6 +161,8 @@ def torch_train(args, model_name, labels, rows, directory, device, history):
         if validation_scores[metric] > best:
             best, validation = validation_scores[metric], validation_scores
             torch.save(model.state_dict(), checkpoint)
+        if scheduler is not None:
+            scheduler.step()
     model.load_state_dict(torch.load(checkpoint, weights_only=True, map_location=device))
     test, matrix = score(model, loaders["test"], device, labels, segment)
     save_json(directory / "confusion.json", {"labels": labels, "test_confusion_matrix": matrix})
@@ -263,6 +273,10 @@ def train(args):
                   "preprocessing": "rgb16-scale-dice" if args.task == "weeds" else "dataset-adapter-v1",
                   "git_sha": commit, "split_sha256": digest, "sample_limit": args.limit or 0,
                   **{f"{key}_count": len(value) for key, value in manifest.items()}}
+        if args.cosine:
+            params["lr_schedule"] = "cosine"
+        if args.paired_rotations:
+            params["augmentation"] = "paired-quadrant-rotations-and-rgb-brightness"
         with mlflow.start_run(run_name=model) as run:
             directory = out / f"{model}-{run.info.run_id[:8]}"
             directory.mkdir()
@@ -300,4 +314,6 @@ if __name__ == "__main__":
     parser.add_argument("--require-gpu", action="store_true")
     parser.add_argument("--expected-split", help="require this split SHA-256 before training")
     parser.add_argument("--experiment", help="MLflow experiment name")
+    parser.add_argument("--paired-rotations", action="store_true", help="augment RGB and mask together")
+    parser.add_argument("--cosine", action="store_true", help="use cosine learning-rate decay")
     train(parser.parse_args())

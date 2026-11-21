@@ -4,6 +4,46 @@
 .bean-film .leaf-access {border:0;padding:0;pointer-events:none;}
 .bean-film .leaf-access a {position:absolute;width:40px;height:40px;padding:0;transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;}
 .bean-film .leaf-access a:focus-visible {outline:2px solid #eaf1ba;outline-offset:3px;}
+.leaf-name {
+  position:absolute;
+  width:1px;
+  height:1px;
+  overflow:hidden;
+  clip-path:inset(50%);
+  white-space:nowrap;
+}
+.leaf-callout,
+.bean-film.poster .leaf-access a:is(:hover,:focus-visible) .leaf-name {
+  background:#14231b;
+  color:#f4f2db;
+  border:1px solid #aebd975e;
+  border-radius:8px;
+  padding:8px 11px;
+  font:600 14px/1.3 system-ui,sans-serif;
+  white-space:nowrap;
+}
+.leaf-callout {
+  position:absolute;
+  z-index:2;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  transform:translate(-50%,calc(-100% - 12px));
+  text-decoration:none;
+  pointer-events:none;
+}
+.leaf-callout[hidden] {display:none;}
+.leaf-callout[data-below] {transform:translate(-50%,12px);}
+.leaf-callout[data-tap] {min-height:44px;pointer-events:auto;}
+.leaf-callout svg {
+  width:15px;
+  height:15px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.5;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
 .bean-film.poster {background:#0b120e url('/botany/beanstalk-poster.webp') center/contain no-repeat}
 .bean-film.poster a {pointer-events:auto;width:9%;height:8%}
 @media(max-width:600px){.bean-film h1{font-size:36px;top:25px;left:22px}}
@@ -12,6 +52,52 @@
 .bean-film.poster .leaf-access {inset:50% auto auto 50%;width:min(100vw,133.333svh);height:auto;aspect-ratio:4/3;transform:translate(-50%,-50%);}
 .bean-film.poster a:nth-child(1){left:41.3%;top:63.5%}.bean-film.poster a:nth-child(2){left:61.1%;top:64.5%}.bean-film.poster a:nth-child(3){left:38.6%;top:53%}.bean-film.poster a:nth-child(4){left:63.1%;top:45.6%}
 .bean-film.poster a:hover {outline:1px solid #e2eac7;}
+.bean-film.poster .leaf-access a:is(:hover,:focus-visible) .leaf-name {
+  width:max-content;
+  height:auto;
+  left:50%;
+  bottom:100%;
+  transform:translateX(-50%);
+  clip-path:none;
+}
+@media (hover:none) {
+  .bean-film.poster .leaf-access {
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+    inset:auto 12px max(12px,env(safe-area-inset-bottom)) 12px;
+    width:auto;
+    aspect-ratio:auto;
+    transform:none;
+  }
+  .bean-film.poster .leaf-access a:nth-child(n) {
+    position:relative;
+    display:grid;
+    place-items:center;
+    inset:auto;
+    width:auto;
+    height:auto;
+    min-height:44px;
+    border-radius:8px;
+    transform:none;
+    background:#14231b;
+    color:#f4f2db;
+    text-align:center;
+    text-decoration:none;
+  }
+  .bean-film.poster .leaf-access .leaf-name,
+  .bean-film.poster .leaf-access a:is(:hover,:focus-visible) .leaf-name {
+    position:static;
+    width:auto;
+    height:auto;
+    padding:6px;
+    border:0;
+    clip-path:none;
+    transform:none;
+    font:600 14px/1.3 system-ui,sans-serif;
+    white-space:normal;
+  }
+}
 .implement-access { position:absolute;inset:0;pointer-events:none; }
 .implement-access button { position:absolute;transform:translate(-50%,-50%);width:44px;height:44px;
   border:0;border-radius:50%;padding:0;background:transparent;pointer-events:none; }

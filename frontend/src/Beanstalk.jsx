@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { toolsList } from './Botany';
 import { bannerCredit, flightSheets, flightPose } from './banner-flight';
 import './beanstalk.css';
@@ -11,8 +11,7 @@ function FilmBanner() {
     const plane=canvas.current, frame=plane.parentElement;
     const context=plane.getContext('2d');
     const reduced=matchMedia('(prefers-reduced-motion: reduce)');
-    const start=performance.now();
-    let animation=0;
+    let animation=0, elapsed=0, last;
     const images=flightSheets.map(sheet=>{
       const image=new Image();
       image.onload=redraw;
@@ -21,7 +20,11 @@ function FilmBanner() {
     });
     let lastSheet, lastSourceX;
     function draw(now) {
-      const pose=flightPose(frame.clientWidth,frame.clientHeight,(now-start)/1000,reduced.matches);
+      const width=frame.clientWidth, height=frame.clientHeight;
+      if(!width || !height){last=undefined;return;}
+      if(last!==undefined)elapsed+=(now-last)/1000;
+      last=now;
+      const pose=flightPose(width,height,elapsed,reduced.matches);
       plane.style.width=pose.span+'px';
       plane.style.transform='translate('+pose.x+'px,'+pose.y+'px)';
       const {sheet,sourceX,sourceY}=pose;
@@ -67,8 +70,10 @@ function GardenFilm({day}) {
     poster={day?'/botany/buried-seed-day.webp':'/botany/buried-seed.webp'} />;
 }
 
-export default function Beanstalk() {
+export default function Beanstalk({ active, skipIntro }) {
   const host = useRef(null);
+  const scene = useRef(null);
+  const sceneMode = useRef({ active, skipIntro });
   const [fallback, setFallback] = useState(false);
   const [day,setDay]=useState(()=>{
     try{return localStorage.getItem(skyPreference)==='day';}catch{return false;}
@@ -77,16 +82,27 @@ export default function Beanstalk() {
     setDay(!day);
     try{localStorage.setItem(skyPreference,day?'night':'day');}catch{/* Storage can be disabled. */}
   };
+  useLayoutEffect(() => {
+    sceneMode.current = { active, skipIntro };
+    scene.current?.setActive(active);
+  }, [active, skipIntro]);
   useEffect(() => {
     let disposed = false;
-    let cleanup;
     const stage = host.current;
     import('./beanstalk-scene').then(({ mountGarden }) => {
-      if (!disposed) { cleanup = mountGarden(stage); setFallback(!cleanup); }
+      if (!disposed) {
+        scene.current = mountGarden(stage, sceneMode.current);
+        setFallback(!scene.current);
+      }
     }).catch(() => { if (!disposed) setFallback(true); });
-    return () => { disposed = true; cleanup?.(); };
+    return () => {
+      disposed = true;
+      scene.current?.dispose();
+      scene.current = null;
+    };
   }, []);
-  return <main className={fallback ? "bean-film poster" : "bean-film"} data-sky={day?'day':'night'} ref={host}>
+  return <main className={fallback ? "bean-film poster" : "bean-film"} data-sky={day?'day':'night'}
+    data-grown={skipIntro || undefined} hidden={!active} ref={host}>
     <h1>PlantGuard</h1>
     <span className="flight-credit">{bannerCredit}</span>
     <button className="sky-switch" type="button" aria-label="Daylight" aria-pressed={day}
@@ -94,12 +110,18 @@ export default function Beanstalk() {
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.9 14.4A8.1 8.1 0 0 1 9.6 4.1a8.3 8.3 0 1 0 10.3 10.3Z"/></svg>
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.8"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>
     </button>
-    {fallback && !matchMedia("(prefers-reduced-motion: reduce)").matches && <GardenFilm day={day} />}
+    {fallback && !skipIntro && !matchMedia("(prefers-reduced-motion: reduce)").matches && <GardenFilm day={day} />}
     <div className="garden-canvas" aria-hidden="true"/>
     {fallback && <FilmBanner />}
     <nav className="leaf-access" aria-label="Plant tools">
-      {toolsList.map(tool => <a key={tool.id} href={'#/'+tool.id} aria-label={tool.title} data-leaf={tool.id}/>)}
+      {toolsList.map(tool => <a key={tool.id} href={'#/'+tool.id} data-leaf={tool.id}>
+        <span className="leaf-name">{tool.title}</span>
+      </a>)}
     </nav>
+    <a className="leaf-callout" tabIndex={-1} hidden>
+      <span />
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h9M8 4l4 4-4 4" /></svg>
+    </a>
     {!fallback && <div className="implement-access">
       <button type="button" hidden data-implement="can" aria-label="Pour the watering can" />
       <button type="button" hidden data-implement="spade" aria-label="Dig with the spade" />

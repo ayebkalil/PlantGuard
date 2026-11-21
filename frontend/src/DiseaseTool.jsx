@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { PhotoPicker } from './FeaturePage';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 function Icon({ name, size = 20 }) {
   const props = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true };
@@ -21,7 +22,6 @@ export default function DiseaseTool() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [webcamOn, setWebcamOn] = useState(false);
-  const [dragging, setDragging] = useState(false);
   const videoRef = useRef(null), streamRef = useRef(null), abortRef = useRef(null), inputRef = useRef(null);
 
   useEffect(() => () => { streamRef.current?.getTracks().forEach((track) => track.stop()); abortRef.current?.abort(); }, []);
@@ -55,14 +55,17 @@ export default function DiseaseTool() {
   const healthy = top && /healthy/i.test(top.condition);
   const tone = uncertain ? 'warn' : healthy ? 'good' : 'bad';
 
-  return <div className="tool-layout"><div className="tool-intro"><h1>Plant disease detection</h1><p>Upload a clear photo or take one with your camera. PlantGuard compares it with known leaf conditions and shows the most likely result.</p><div className="tool-tip"><span className="tip-mark">✳</span><span>For the clearest result, photograph one leaf in good light against a simple background.</span></div></div>
-    <section className="tool-panel" aria-label="Leaf analysis"><div className="tool-panel-head"><div><h2>Analyze a leaf</h2></div></div><div className="tabs" role="tablist" aria-label="Input method"><button type="button" role="tab" aria-selected={mode === 'upload'} className={mode === 'upload' ? 'tab active' : 'tab'} onClick={() => switchMode('upload')}><Icon name="upload" size={18} /> Upload photo</button><button type="button" role="tab" aria-selected={mode === 'camera'} className={mode === 'camera' ? 'tab active' : 'tab'} onClick={() => switchMode('camera')}><Icon name="camera" size={18} /> Use camera</button></div>
-      <div className="stage">{!previewUrl && mode === 'upload' && <button type="button" className={dragging ? 'drop dragging' : 'drop'} onClick={() => inputRef.current?.click()} onDragOver={(event) => { event.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={(event) => { event.preventDefault(); setDragging(false); handleFile(event.dataTransfer.files[0]); }}><span className="drop-icon"><Icon name="upload" size={25} /></span><strong>Drop your leaf photo here</strong><span>or click to browse your files</span><small>JPG, PNG or another image format</small></button>}
+  return <section className="tool-panel" aria-label="Leaf analysis">
+      {!previewUrl && <div className="tabs" role="group" aria-label="Input method">
+        <button type="button" aria-pressed={mode === 'upload'} className={mode === 'upload' ? 'tab active' : 'tab'} onClick={() => switchMode('upload')}><Icon name="upload" size={18} /> Upload photo</button>
+        <button type="button" aria-pressed={mode === 'camera'} className={mode === 'camera' ? 'tab active' : 'tab'} onClick={() => { if (!webcamOn) switchMode('camera'); }}><Icon name="camera" size={18} /> Use camera</button>
+      </div>}
+      <div className="stage">{!previewUrl && mode === 'upload' && <PhotoPicker subject="a leaf photo" formats="JPG or PNG recommended" onBrowse={() => inputRef.current?.click()} onDrop={handleFile} />}
         <input ref={inputRef} type="file" accept="image/*" hidden onChange={(event) => { handleFile(event.target.files[0]); event.target.value = ''; }} />
         <div className="camera" style={{ display: mode === 'camera' && !previewUrl ? 'block' : 'none' }}><video ref={videoRef} autoPlay muted playsInline /><div className="guide" />{!webcamOn && <div className="camera-hint">Starting camera…</div>}</div>
         {mode === 'camera' && !previewUrl && <button className="button button-primary capture-button" onClick={capture} disabled={!webcamOn || loading}>Capture leaf <Icon name="camera" size={18} /></button>}
         {previewUrl && <div className="review"><div className="photo"><img src={previewUrl} alt="Leaf submitted for analysis" />{loading && <div className="scan"><span /></div>}</div><div className="verdict" aria-live="polite">{loading && <p className="analysis-status">{status}</p>}{result && top && <><span className={`result-badge ${tone}`}>{uncertain ? 'Uncertain result' : healthy ? 'Healthy leaf' : 'Condition detected'}</span><h3>{top.plant}</h3><p className="condition">{top.condition || 'Condition unavailable'}</p><div className="meter"><div className="meter-head"><span>Confidence</span><strong>{(result.confidence * 100).toFixed(1)}%</strong></div><div className="bar"><i className={tone} style={{ width: `${result.confidence * 100}%` }} /></div></div>{uncertain && <p className="note">Try another photo with one centered leaf and even lighting.</p>}<div className="alternatives"><span className="panel-kicker">OTHER POSSIBILITIES</span><ul>{result.top_predictions?.slice(1).map((item) => { const label = splitLabel(item.class_name); return <li key={item.class_name}><span>{label.plant}{label.condition ? ` · ${label.condition}` : ''}</span><strong>{(item.confidence * 100).toFixed(1)}%</strong></li>; })}</ul></div><p className="result-meta">{result.inference_time_ms.toFixed(0)} ms · model v{result.model_version}</p></>}<button className="text-button" onClick={reset}>Analyze another leaf <Icon name="arrow" size={17} /></button></div></div>}
-        {error && <p className="error" role="alert">{error}</p>}</div><div className="tool-panel-foot">Results are guidance only. Confirm serious cases with an agronomist.</div></section></div>;
+        {error && <p className="error" role="alert">{error}</p>}</div>{result && <div className="tool-panel-foot">Results are guidance only. Confirm serious cases with an agronomist.</div>}</section>;
 }
 
 

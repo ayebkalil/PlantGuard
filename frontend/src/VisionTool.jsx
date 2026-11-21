@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Glyph } from './Botany';
+import { PhotoPicker } from './FeaturePage';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const percent = (value) => (value * 100).toFixed(1) + '%';
 const TASKS = {
-  pests: { description: 'Upload a close-up of a suspected insect. PlantGuard marks each detected pest on the image.', action: 'Detect pests' },
-  weeds: { description: 'Upload a downward-facing RGB image of a maize field to map crop and weed coverage.', action: 'Map vegetation' },
-  fruit: { description: 'Upload a photo of an apple, banana, or orange to classify its visible condition as fresh or rotten.', action: 'Check freshness' },
+  pests: { subject: 'an insect photo', action: 'Detect pests' },
+  weeds: { subject: 'a field photo', action: 'Map vegetation' },
+  fruit: { subject: 'a fruit photo', action: 'Check freshness' },
 };
 
 function Results({ result }) {
@@ -114,16 +114,7 @@ export default function VisionTool({ tool }) {
     unavailable: 'The model could not load. Try again after the serving checkpoint is restored.',
   };
 
-  return <div className="tool-layout vision-layout">
-    <header className="tool-intro">
-      <h1>{tool.title}</h1>
-      <p>{details.description}</p>
-    </header>
-    <section className="tool-panel" aria-label={tool.title}>
-      {availability !== 'ready' && <p className="vision-notice" role="status">{messages[availability]}</p>}
-      {pestBenchmark !== null && pestBenchmark < .10 && <p className="vision-notice">
-        The current pest model scored {percent(pestBenchmark)} mAP50–95 on held-out images. It can miss pests and mislabel detections.
-      </p>}
+  return <section className="tool-panel" aria-label={tool.title}>
       <input ref={input} type="file" accept=".jpg,.jpeg,.png,.bmp" hidden onChange={(event) => {
         choose(event.target.files[0]);
         event.target.value = '';
@@ -135,21 +126,20 @@ export default function VisionTool({ tool }) {
           style={{ left: percent(box[0]), top: percent(box[1]), width: percent(box[2] - box[0]), height: percent(box[3] - box[1]) }}>
           <span>{index + 1}</span>
         </div>)}
-      </div> : <button type="button" className="drop"
-        onClick={() => input.current?.click()} onDragOver={(event) => event.preventDefault()}
-        onDrop={(event) => { event.preventDefault(); choose(event.dataTransfer.files[0]); }}>
-        <span className="vision-glyph"><Glyph type={tool.icon} /></span>
-        <strong>Choose a photo</strong><small>Drop a JPG, PNG, or BMP up to 8 MB</small>
-      </button>}
+      </div> : <PhotoPicker subject={details.subject} formats="JPG, PNG, BMP · 8 MB max"
+        onBrowse={() => input.current?.click()} onDrop={choose} />}
       {file && <div className="vision-actions">
         <button type="button" className="button" disabled={busy || availability !== 'ready'} onClick={analyze}>{busy ? 'Analyzing…' : details.action}</button>
         <button type="button" className="text-button" onClick={() => input.current?.click()}>Change photo</button>
       </div>}
       {error && <p className="error" role="alert">{error}</p>}
+      {availability !== 'ready' && <p className="vision-notice" role="status">{messages[availability]}</p>}
+      {pestBenchmark !== null && pestBenchmark < .10 && <p className="vision-notice">
+        The current pest model scored {percent(pestBenchmark)} mAP50–95 on held-out images. It can miss pests and mislabel detections.
+      </p>}
       <div aria-live="polite">{result && <>
         <Results result={result} />
         <p className="result-meta">{result.inference_time_ms.toFixed(0)} ms · model {result.model_version}</p>
       </>}</div>
-    </section>
-  </div>;
+    </section>;
 }

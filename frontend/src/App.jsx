@@ -3,6 +3,7 @@ import Beanstalk from './Beanstalk';
 import DiseaseTool from './DiseaseTool';
 import { toolsList } from './Botany';
 import VisionTool from './VisionTool';
+import FeaturePage from './FeaturePage';
 
 function selectedTool() {
   const id = location.hash.split('/').pop();
@@ -10,11 +11,18 @@ function selectedTool() {
 }
 
 export default function App() {
-  const [tool, setTool] = useState(selectedTool);
+  const [{ tool, skipGardenIntro }, setRoute] = useState(() => ({
+    tool: selectedTool(),
+    skipGardenIntro: false,
+  }));
   useEffect(() => {
     const navigate = () => {
       if (location.hash === '#/banana') history.replaceState(history.state, '', '#/disease');
-      setTool(selectedTool());
+      const nextTool = selectedTool();
+      setRoute(current => current.tool === nextTool ? current : {
+        tool: nextTool,
+        skipGardenIntro: current.skipGardenIntro || !current.tool,
+      });
       window.scrollTo(0, 0);
     };
     navigate();
@@ -22,9 +30,10 @@ export default function App() {
     return () => window.removeEventListener('hashchange', navigate);
   }, []);
   useEffect(() => { document.title = tool ? tool.title + ' · PlantGuard' : 'PlantGuard'; }, [tool]);
-  if (!tool) return <Beanstalk />;
-  return <div className="world atlas"><main className="detail">
-    <a className="back" href="#/">← PlantGuard</a>
-    {tool.id === 'disease' ? <DiseaseTool /> : <VisionTool key={tool.id} tool={tool} />}
-  </main></div>;
+  return <>
+    {(!tool || skipGardenIntro) && <Beanstalk active={!tool} skipIntro={skipGardenIntro} />}
+    {tool && <FeaturePage tool={tool}>
+      {tool.id === 'disease' ? <DiseaseTool /> : <VisionTool key={tool.id} tool={tool} />}
+    </FeaturePage>}
+  </>;
 }

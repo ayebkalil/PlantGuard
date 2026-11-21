@@ -5,7 +5,6 @@ import { soilBed, germination } from './garden-soil';
 import { gardenImplements } from './garden-implements';
 import { gardenSky } from './garden-sky';
 
-const ids=['disease','pests','weeds','fruit'];
 function center(t) {
   // The ascending shoot inclines smoothly above the last mature node.
   const crown=ease(.77,1,t);
@@ -13,7 +12,7 @@ function center(t) {
     6.5*t-.12, .31*Math.sin(t*10)+.13*crown);
 }
 
-function makePlant(scene) {
+function makePlant(scene, featureIds) {
   const group=new T.Group();scene.add(group);
   const stalks=[];
   const bark=new T.TextureLoader().load('/botany/epidermis.webp');
@@ -58,7 +57,7 @@ function makePlant(scene) {
     });
     const blade=mesh(joint,bladeGeometry(len,width,bend),mat);
     const arrival=.31+.60*(.5-Math.sin(Math.asin(1-2*level)/3));
-    blade.userData.tool=ids[i%4];leaves.push({node,blade,joint,roll,arrival,pitch,youth});
+    blade.userData.tool=featureIds[i%featureIds.length];leaves.push({node,blade,joint,roll,arrival,pitch,youth});
   });
   return {leaves,update(p,time){
     const h=ease(.31,.91,p);
@@ -75,13 +74,16 @@ function makePlant(scene) {
   }};
 }
 
-export function mountGarden(host){
+export function mountGarden(host,{active=true,skipIntro=false}={}){
   const holder=host.querySelector('.garden-canvas');
+  const links=[...host.querySelectorAll('[data-leaf]')];
+  const features=new Map(links.map(link=>[link.dataset.leaf,link]));
+  const callout=host.querySelector('.leaf-callout');
+  const calloutName=callout.querySelector('span');
   let renderer;
   try {renderer=new T.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});}
   catch {host.classList.add('poster');return;}
   holder.append(renderer.domElement);
-  renderer.setPixelRatio(Math.min(devicePixelRatio,1.65));
   renderer.localClippingEnabled=true;
   renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;
   renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.34;
@@ -93,7 +95,7 @@ export function mountGarden(host){
   const key=new T.DirectionalLight();key.position.set(5,9,3);scene.add(key);
   key.castShadow=true;key.shadow.mapSize.set(1024,1024);Object.assign(key.shadow.camera,{left:-6,right:6,top:9,bottom:-6});key.shadow.normalBias=.045;
   const rim=new T.DirectionalLight(0xd2edbc,2.9);rim.position.set(3,7,-5);scene.add(rim);
-  const rnd=random(1918),ground=soilBed(scene,rnd),roots=germination(scene),plant=makePlant(scene);
+  const rnd=random(1918),ground=soilBed(scene,rnd),roots=germination(scene),plant=makePlant(scene,[...features.keys()]);
   let light=Number(host.dataset.sky==='day');
   const sky=gardenSky(scene,renderer,ground.earth,light);
   const colors=[['#a2b9db','#e4f3ff'],['#4a5157','#92805d'],['#c0d8ff','#fff0c6'],
@@ -123,10 +125,26 @@ export function mountGarden(host){
   bounce.position.set(-.7,-.52,1.7);scene.add(bounce);
   const reduced=matchMedia('(prefers-reduced-motion: reduce)');
   const point=new T.Vector2(20,20),ray=new T.Raycaster(),targets=plant.leaves.map(l=>l.blade);
-  const links=[...host.querySelectorAll('[data-leaf]')];
   const controls=[...host.querySelectorAll('[data-implement]')];
-  let hover=null,frame=0,last=performance.now(),p=reduced.matches?1:0,elapsed=0, desired=p, width=0,height=0;
-  const resize=new ResizeObserver(()=>{width=host.clientWidth;height=host.clientHeight;renderer.setSize(width,height,false);sky.resize();camera.aspect=width/height;camera.updateProjectionMatrix();implementsScene.layout(camera.aspect);});resize.observe(host);
+  const screen=new T.Vector3();
+  let hover=null,touchLeaf=null,pointerType,calloutHalfWidth=0;
+  let frame=0,last=performance.now(),p=skipIntro||reduced.matches?1:0,elapsed=0,desired=p,width=0,height=0;
+  function resizeScene(){
+    if(!active)return;
+    const nextWidth=host.clientWidth,nextHeight=host.clientHeight;
+    const ratio=Math.min(devicePixelRatio,1.65);
+    if(!nextWidth||!nextHeight || (nextWidth===width && nextHeight===height && ratio===renderer.getPixelRatio()))return;
+    width=nextWidth;height=nextHeight;
+    if(ratio!==renderer.getPixelRatio())renderer.setPixelRatio(ratio);
+    renderer.setSize(width,height,false);
+    sky.resize();
+    camera.aspect=width/height;
+    camera.updateProjectionMatrix();
+    implementsScene.layout(camera.aspect);
+    calloutHalfWidth=callout.offsetWidth/2;
+  }
+  const resize=new ResizeObserver(resizeScene);
+  resize.observe(host);
   function pick(event){
     const rect=holder.getBoundingClientRect();point.set((event.clientX-rect.left)/rect.width*2-1,1-2*(event.clientY-rect.top)/rect.height);
     ray.setFromCamera(point,camera);
@@ -136,19 +154,60 @@ export function mountGarden(host){
     return hit?.userData.implement || hit || null;
   }
   function highlight(next){
+    if(hover===next)return;
     if(hover?.paints)hover.hover=false;
     else if(hover)hover.material.emissive.setHex(0);
     hover=next;
     if(next?.paints)next.hover=true;
     else if(next)next.material.emissive.setHex(0x375216);
     holder.style.cursor=next?'pointer':'default';
+    const link=features.get(next?.userData?.tool);
+    callout.hidden=!link;
+    if(link){
+      calloutName.textContent=link.textContent;
+      callout.href=link.href;
+      callout.toggleAttribute('data-tap',next===touchLeaf);
+      calloutHalfWidth=callout.offsetWidth/2;
+      positionCallout();
+    }
   }
-  const move=e=>highlight(pick(e)),leave=()=>highlight(null),click=e=>{
+  function projectBlade(blade){
+    blade.getVertexPosition(Math.floor(blade.geometry.attributes.position.count/2),screen);
+    return blade.localToWorld(screen).project(camera);
+  }
+  function positionCallout(){
+    const anchor=projectBlade(hover);
+    const x=clamp((anchor.x+1)*width/2,calloutHalfWidth+8,width-calloutHalfWidth-8);
+    const y=(1-anchor.y)*height/2;
+    callout.style.left=x+'px';
+    callout.style.top=y+'px';
+    callout.toggleAttribute('data-below',y<64);
+  }
+  const rememberPointer=e=>{pointerType=e.pointerType;};
+  const move=e=>{
+    if(e.pointerType==='touch')return;
+    touchLeaf=null;
+    callout.removeAttribute('data-tap');
+    highlight(pick(e));
+  };
+  const leave=e=>{if(e.pointerType!=='touch')highlight(null);};
+  const click=e=>{
     const obj=pick(e);
-    if(obj?.paints)implementsScene.activate(obj);
-    else if(obj)location.hash='/'+obj.userData.tool;
+    const link=features.get(obj?.userData?.tool);
+    if(link){
+      if((e.pointerType||pointerType)==='touch' && touchLeaf!==obj){
+        touchLeaf=obj;
+        highlight(obj);
+        callout.setAttribute('data-tap','');
+      }else link.click();
+    }else{
+      touchLeaf=null;
+      highlight(obj);
+      if(obj?.paints)implementsScene.activate(obj);
+    }
   };
   const scrub=e=>{if(!reduced.matches)desired=clamp(desired+e.deltaY*.0005,0,1);};
+  holder.addEventListener('pointerdown',rememberPointer);
   holder.addEventListener('pointermove',move);holder.addEventListener('pointerleave',leave);holder.addEventListener('click',click);holder.addEventListener('wheel',scrub,{passive:true});
   let touchY;
   const start=e=>{touchY=e.touches[0].clientY;},drag=e=>{const y=e.touches[0].clientY;scrub({deltaY:(touchY-y)*3});touchY=y;};
@@ -156,9 +215,12 @@ export function mountGarden(host){
   const controlProp=target=>implementsScene.props[controls.indexOf(target)];
   const useControl=e=>{const prop=controlProp(e.target);if(prop)implementsScene.activate(prop);};
   host.addEventListener('click',useControl);
-  const focus=e=>highlight(controlProp(e.target) || targets.find(t=>t.userData.tool===e.target.dataset.leaf));
+  const focus=e=>{if(e.target!==callout)highlight(controlProp(e.target) || targets.find(t=>t.userData.tool===e.target.dataset.leaf) || null);};
+  const escape=e=>{if(e.key==='Escape'){touchLeaf=null;highlight(null);}};
   host.addEventListener('focusin',focus);host.addEventListener('focusout',leave);
+  window.addEventListener('keydown',escape);
   function draw(now){
+    if(!active)return;
     frame=requestAnimationFrame(draw);
     if(!width||!height)return;
     const dt=clamp((now-last)/1000,0,.12);last=now;elapsed+=dt;
@@ -193,18 +255,39 @@ export function mountGarden(host){
       button.style.left=((screen.x+1)*50)+'%';button.style.top=((1-screen.y)*50)+'%';
     });
     links.forEach((link,i)=>{
-      const blade=targets[i],mid=V(1,0,0);blade.localToWorld(mid);mid.project(camera);
+      const blade=targets[i],mid=projectBlade(blade);
       link.style.left=((mid.x+1)*50)+'%';link.style.top=((1-mid.y)*50)+'%';
       link.tabIndex=blade.parent.parent.visible?0:-1;
     });
+    if(!callout.hidden){
+      if(hover.parent.parent.visible)positionCallout();
+      else {touchLeaf=null;highlight(null);}
+    }
   }
-  frame=requestAnimationFrame(draw);
-  return ()=>{
+  if(active){resizeScene();frame=requestAnimationFrame(draw);}
+  function setActive(next){
+    if(active===next)return;
+    active=next;
+    if(!active){
+      cancelAnimationFrame(frame);
+      touchLeaf=null;
+      highlight(null);
+      p=desired=1;
+      return;
+    }
+    resizeScene();
+    // Composite the retained scene before the revealed canvas can be painted.
+    last=performance.now();
+    draw(last);
+  }
+  function dispose(){
     cancelAnimationFrame(frame);resize.disconnect();host.removeEventListener('focusin',focus);host.removeEventListener('focusout',leave);host.removeEventListener('click',useControl);
+    window.removeEventListener('keydown',escape);holder.removeEventListener('pointerdown',rememberPointer);
     holder.removeEventListener('pointermove',move);holder.removeEventListener('pointerleave',leave);holder.removeEventListener('click',click);holder.removeEventListener('wheel',scrub);holder.removeEventListener('touchstart',start);holder.removeEventListener('touchmove',drag);
     const resources=new Set();scene.traverse(o=>{if(o.geometry)resources.add(o.geometry);if(o.material){resources.add(o.material);if(o.material.userData.turf)resources.add(o.material.userData.turf);if(o.material.map)resources.add(o.material.map);if(o.material.bumpMap)resources.add(o.material.bumpMap);}});
     resources.forEach(r=>r.dispose());sky.dispose();key.shadow.dispose();renderer.dispose();renderer.domElement.remove();
-  };
+  }
+  return {setActive,dispose};
 }
 
 

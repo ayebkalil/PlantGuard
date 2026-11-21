@@ -225,12 +225,13 @@ export function gardenImplements(scene) {
   function layout(aspect) {
     const wide=ease(.62,1.4,aspect);
     const extraWidth=Math.max(0,aspect-1.5);
+    const showWheelbarrow=aspect>=1.74;
     can.base.position.set(-2.91-1.53*wide-2.15*extraWidth,0,.65-.9*wide);
-    spade.base.position.set(3.06+1.71*wide+1.58*extraWidth,0,-2.6);
+    spade.base.position.set(3.06+1.71*wide+1.58*extraWidth,0,showWheelbarrow?-4.7:-2.6);
     rake.base.position.set(-3.28-2.91*wide-5.20*extraWidth,0,-3.6);
-    barrow.base.visible=aspect>=1.74;
-    barrow.base.scale.setScalar(.78+.22*ease(1.74,2.12,aspect));
-    barrow.base.position.set(3.92*aspect-2.59,0,1.05);
+    barrow.base.visible=showWheelbarrow;
+    barrow.base.scale.setScalar(1.04+.31*ease(1.74,2.12,aspect));
+    barrow.base.position.set(3.92*aspect-3.19,0,.8);
     can.base.scale.setScalar(1.09+.37*wide);
     spade.base.scale.setScalar(1.13+.30*wide);
     rake.base.scale.setScalar(.94+.21*wide);

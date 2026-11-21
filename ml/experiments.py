@@ -31,7 +31,7 @@ def run_candidate(recipe, output, dataset, tracking_uri, require_gpu):
     env = os.environ.copy()
     env["MLFLOW_TRACKING_URI"] = tracking_uri
     env.setdefault("PYTHONIOENCODING", "utf-8")
-    if require_gpu:
+    if require_gpu and task == "disease":
         import torch
 
         if not torch.cuda.is_available():
@@ -42,6 +42,8 @@ def run_candidate(recipe, output, dataset, tracking_uri, require_gpu):
             command.extend(["--dataset-root", str(dataset)])
     else:
         command = ["-m", "ml.vision.train", task, "--output", str(output), "--work", str(Path("data/vision").resolve())]
+        if require_gpu:
+            command.append("--require-gpu")
         if dataset:
             command.extend(["--data", str(dataset)])
     command.extend(["--models", model, "--seed", str(recipe["seed"]), "--experiment", recipe["experiment"],

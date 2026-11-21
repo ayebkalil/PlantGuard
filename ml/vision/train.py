@@ -164,8 +164,9 @@ def torch_train(args, model_name, labels, rows, directory, device, history):
 
 
 def yolo_train(args, name, manifest, directory, device, history):
-    from ultralytics import YOLO
+    from ultralytics import YOLO, settings
 
+    settings.update({"mlflow": False})
     model = YOLO(f"{name}.yaml" if args.scratch else f"{name}.pt")
     model.train(data=str(manifest), epochs=args.epochs, imgsz=args.size, batch=args.batch,
                 seed=args.seed, deterministic=True, device=0 if device == "cuda" else "cpu",

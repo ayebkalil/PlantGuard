@@ -22,6 +22,7 @@ BANANA = f"https://huggingface.co/datasets/Project-AgML/BananaImageBD_ripeness_c
 WEEDS = "https://doidata.gfz.de/weedsgalore_e_celikkan_2024/weedsgalore-dataset.zip"
 WEEDS_REV = "0ddf3a77bce282daf9d795de6f6c3d98e7fc9dcc"
 WEEDS_SPLITS = f"https://raw.githubusercontent.com/GFZ/weedsgalore/{WEEDS_REV}/src/datasets/weedsgalore/splits"
+IP_CLASSES = "https://raw.githubusercontent.com/xpwu95/IP102/924dda98fbb8d012f5f86276c22e6d5a4f2b6196/classes.txt"
 IP_FILES = {
     "Annotations.tar": "1TV1jaAp-XwhDupy_xfy4XPcmSFUb83c8",
     "JPEGImages.tar": "1w7Lr4MQf03uREysDMh5Tr1T2xjfSxhRz",
@@ -237,10 +238,16 @@ def pest_data(source, work, seed, limit):
             observed.update(name.text.strip() for name in names if name.text and name.text.strip())
         except ET.ParseError:
             invalid_xml.add(key)
-    labels = sorted(observed)
-    if not labels:
+    raw_labels = sorted(observed)
+    if not raw_labels:
         raise ValueError("The IP102 input contains no bounding box labels")
-    indices = dict(zip(labels, range(len(labels))))
+    indices = dict(zip(raw_labels, range(len(raw_labels))))
+    labels = raw_labels
+    if all(label.isdigit() and 0 <= int(label) < 102 for label in raw_labels):
+        taxonomy = download(IP_CLASSES, work / "ip102-classes.txt").read_text(encoding="utf-8")
+        names = {int(number) - 1: name.strip() for number, name in (line.strip().split(maxsplit=1)
+                 for line in taxonomy.splitlines() if line.strip())}
+        labels = [f"{names[int(label)]} (IP102 {label})" for label in raw_labels]
     destination = work / "yolo"
     digests = {}
     image_splits = {}
@@ -269,7 +276,8 @@ def pest_data(source, work, seed, limit):
     manifest.write_text(yaml.safe_dump({"path": str(destination.resolve()), "train": "images/train",
                                        "val": "images/val", "test": "images/test", "names": labels}))
     return labels, manifest, digests, {"source": "https://github.com/xpwu95/IP102", "release": "v1.1 VOC2007",
-                                      "official_test": True, "invalid_annotations_omitted": len(invalid_xml)}
+                                      "official_test": True, "annotation_classes": len(labels),
+                                      "invalid_annotations_omitted": len(invalid_xml)}
 
 
 def split_hash(splits):

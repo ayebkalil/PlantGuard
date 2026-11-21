@@ -10,6 +10,7 @@ from backend.app.api import routes
 from backend.app.main import app
 from backend.app.services.vision import VisionService, boxed_predictions, segmented_prediction, tensor_image
 from ml.vision.data import split_classifier, voc_boxes
+from ml.vision.train import Samples
 
 
 def test_ip102_annotation_trailing_bytes_and_voc_coordinates(tmp_path):
@@ -50,6 +51,19 @@ def test_segmentation_overlay_and_coverage():
     result = segmented_prediction(logits, ["background", "maize", "weed"])
     assert result["coverage"][-1] == {"label": "weed", "fraction": .5}
     assert result["overlay"].startswith("data:image/png;base64,")
+
+
+def test_weed_training_preserves_high_bit_depth_band_contrast(tmp_path):
+    bands = []
+    for name in "RGB":
+        path = tmp_path / f"{name}.png"
+        Image.fromarray(np.array([[0, 16384], [32768, 65535]], dtype=np.uint16)).save(path)
+        bands.append(path)
+    mask = tmp_path / "mask.png"
+    Image.fromarray(np.array([[0, 1], [2, 5]], dtype=np.uint8)).save(mask)
+    image, target = Samples([(bands, mask, "")], 2, segment=True, train=False)[0]
+    assert image[0].unique().numel() == 4
+    assert target.tolist() == [[0, 1], [2, 2]]
 
 
 @pytest.mark.parametrize("task", ("banana", "fruit", "pests", "weeds"))

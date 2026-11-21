@@ -46,6 +46,7 @@ def run_candidate(recipe, output, dataset, tracking_uri, require_gpu):
             command.extend(["--data", str(dataset)])
     command.extend(["--models", model, "--seed", str(recipe["seed"]), "--experiment", recipe["experiment"],
                     "--expected-split", expected_split, *recipe["args"]])
+    commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
     subprocess.run([sys.executable, "-u", *command], env=env, check=True)
 
     if task == "disease":
@@ -67,7 +68,7 @@ def run_candidate(recipe, output, dataset, tracking_uri, require_gpu):
     comparison = {
         "task": task,
         "experiment": recipe["experiment"],
-        "git_sha": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+        "git_sha": candidate.get("params", {}).get("git_sha", commit),
         "split_sha256": expected_split,
         "primary_validation_metric": f"val_{primary}",
         "baseline": {key: baseline[key] for key in ("architecture", "version", "checkpoint_sha256")},

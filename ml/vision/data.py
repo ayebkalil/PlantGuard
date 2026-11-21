@@ -70,7 +70,8 @@ def fruit_rows(source, limit=None, seed=42):
             directory = directories.get(name.replace(" ", ""))
             if directory is None:
                 raise ValueError(f"Fruit archive is missing {name} in {split}. Found: {sorted(directories)}")
-            images = image_files(directory)
+            # Keep the published Kaggle ordering across case-sensitive and Windows filesystems.
+            images = sorted(image_files(directory), key=lambda path: path.relative_to(directory).as_posix())
             if not images:
                 raise ValueError(f"No fruit images found in {directory}")
             count = max(3, limit // 5) if limit and split == "test" else limit

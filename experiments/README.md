@@ -16,4 +16,3 @@ kaggle kernels push -p data/kaggle-experiment/weeds --accelerator NvidiaTeslaT4
 ```
 
 The runner verifies the baseline split fingerprint before training and saves `baseline-comparison.json` with the two run IDs, checkpoint hashes and metric deltas. CPU timings can vary across hosts and runtime sessions. Checkpoint export stays in the experiment output.
-
